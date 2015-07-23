@@ -7,10 +7,18 @@ from qgis.core import QGis, QgsProject, QgsVectorLayer, QgsRasterLayer, QgsMapLa
 from qgis.gui import *  # QgsLayerTreeView #, QgsLayerTreeNode
 import imp
 import os
+from os import path
 from editor.editorGui import xmlEditor
 
 # pour Qgis 2
 version = '1.1.1'
+
+
+def locale_resource(*filepath):
+    """
+    filepath should be a list of arguments corresponding to the path remaining
+    """
+    return path.join(path.abspath(path.dirname(__file__)), *filepath)
 
 
 class Menus():
@@ -22,6 +30,8 @@ class Menus():
         return QCoreApplication.translate("Menus", txt, disambiguation, QApplication.UnicodeUTF8)
 
     def initGui(self):
+        """Create the menu entries and toolbar icons inside the QGIS GUI."""
+
         self.path = os.path.abspath(os.path.dirname(__file__))
         # i18n support
         overrideLocale = QSettings().value("locale/overrideFlag", False)
