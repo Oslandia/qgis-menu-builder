@@ -17,7 +17,7 @@ class xmlEditor(QtGui.QDialog):
       QtGui.QMessageBox.critical( parent, "Echec",
        u"L'éditeur de code est introuvable.\nLe module 'QScintilla' n'est pas installé.")
       return
-    
+
     self.reload = foncReload # fonction qui met à jour les menus (à appeler quand on enregistre le fichier xml)
     self.fichier = fichier
     flags = QtCore.Qt.WindowTitleHint | QtCore.Qt.WindowSystemMenuHint | QtCore.Qt.WindowMaximizeButtonHint | QtCore.Qt.WindowStaysOnTopHint
@@ -32,12 +32,12 @@ class xmlEditor(QtGui.QDialog):
     bSave.clicked.connect(self.saveChanges)
     bSave.setToolTip(u"<p>Sauvegarder les modifications apportées au fichier<br />puis appliquer ces changements dans les menus.</p><br /><br /><br />")
     hLayout2.addWidget(bSave)
-    
+
     self.bAide = QtGui.QPushButton(u'Aide',self)
     self.bAide.clicked.connect(self.aide)
     hLayout2.addWidget(self.bAide)
     self.ed.setUtf8(True) # permet saisie des accents (requis meme pour cp1252)
-    
+
     lexer = QsciLexerXML(self) # Choose a lexer
     api = Qsci.QsciAPIs(lexer)
     api.prepare() # Compile the api for use in the lexer
@@ -46,13 +46,13 @@ class xmlEditor(QtGui.QDialog):
     # Set the length of the string before the editor tries to autocomplete
     self.ed.setAutoCompletionThreshold(2)
     self.ed.setLexer(lexer)
-    
+
     font = QtGui.QFont() # Set the default font
     font.setFamily('Courier')
     font.setFixedPitch(True)
     font.setPointSize(12)
     self.ed.setFont(font)
-    
+
     font.setFamily('Helvetica')
     font.setPointSize(9)
     self.ed.setMarginsFont(font)
@@ -60,14 +60,14 @@ class xmlEditor(QtGui.QDialog):
     self.ed.setMarginWidth(0, large) # Margin 0 is used for line numbers
     self.ed.setMarginLineNumbers(0, True)
     self.ed.setMarginWidth(1,1) # la marge entre num lignes et blocs
-    
+
     self.ed.setMarginsBackgroundColor(QtGui.QColor("#cccccc"))
     # Brace matching: enable for a brace immediately before or after the current position :
     self.ed.setBraceMatching(QsciScintilla.SloppyBraceMatch)
     # Current line visible with special background color :
     self.ed.setCaretLineVisible(True)
     self.ed.setCaretLineBackgroundColor(QtGui.QColor("#ffe4e4"))
-    
+
     # Use raw message to Scintilla here (all messages are documented here:  http://www.scintilla.org/ScintillaDoc.html)
     self.ed.setTabWidth(2) # tab=2 car
     self.ed.setIndentationsUseTabs(False) # remplace tabs par car
@@ -78,10 +78,10 @@ class xmlEditor(QtGui.QDialog):
     self.ed.setIndentationGuides( True )
     self.ed.setFolding(QsciScintilla.BoxedTreeFoldStyle) # Folding visual : we will use boxes
     self.ed.setFoldMarginColors(QtGui.QColor("#99CC66"),QtGui.QColor("#AAAAAA"))
-    
+
     self.ed.setWrapMode( QsciScintilla.WrapWord )
     self.ed.setWrapIndentMode( QsciScintilla.WrapIndentSame )
-    
+
     self.ed.setText( codecs.open(fichier,'r','cp1252','replace').read() ) # Show this file in the editor
     #Fin __init__()
 
