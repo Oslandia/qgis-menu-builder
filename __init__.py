@@ -7,7 +7,7 @@
                              -------------------
         begin                : 2015-07-23
         copyright            : (C) 2015 by Oslandia
-        email                : ludovic.delaune@oslandia.com
+        email                : ludovic dot delaune@oslandia dot com
         git sha              : $Format:%H$
  ***************************************************************************/
 

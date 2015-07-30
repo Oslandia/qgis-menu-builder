@@ -8,7 +8,7 @@
         begin                : 2015-07-23
         git sha              : $Format:%H$
         copyright            : (C) 2015 by Oslandia
-        email                : ludovic.delaune@oslandia.com
+        email                : ludovic dot delaune@oslandia dot com
  ***************************************************************************/
 
 /***************************************************************************
@@ -27,6 +27,7 @@ from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
 from PyQt4.QtGui import QAction, QIcon
 # Initialize Qt resources from file resources.py
 import resources_rc
+
 # Import the code for the dialog
 from menu_builder_dialog import MenuBuilderDialog
 import os.path
@@ -74,9 +75,6 @@ class MenuBuilder:
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr('&Menu Builder')
-        # TODO: We are going to let the user set this up in a future iteration
-        self.toolbar = self.iface.addToolBar('MenuBuilder')
-        self.toolbar.setObjectName('MenuBuilder')
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -92,18 +90,6 @@ class MenuBuilder:
         """
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
         return QCoreApplication.translate('MenuBuilder', message)
-
-    def store(self):
-        s = QSettings()
-        # s.setValue("myplugin/mytext", "hello world")
-        # s.setValue("myplugin/myint",  10)
-        # s.setValue("myplugin/myreal", 3.14)
-
-    def read(self):
-        s = QSettings()
-        # mytext = s.value("myplugin/mytext", "default text")
-        # myint = s.value("myplugin/myint", 123)
-        # myreal = s.value("myplugin/myreal", 2.71)
 
     def add_action(
             self,
@@ -136,10 +122,6 @@ class MenuBuilder:
             be added to the menu. Defaults to True.
         :type add_to_menu: bool
 
-        :param add_to_toolbar: Flag indicating whether the action should also
-            be added to the toolbar. Defaults to True.
-        :type add_to_toolbar: bool
-
         :param status_tip: Optional text to show in a popup when mouse pointer
             hovers over the action.
         :type status_tip: str
@@ -167,7 +149,7 @@ class MenuBuilder:
             action.setWhatsThis(whats_this)
 
         if add_to_toolbar:
-            self.toolbar.addAction(action)
+            self.iface.addToolBarIcon(action)
 
         if add_to_menu:
             self.iface.addPluginToMenu(
@@ -184,8 +166,11 @@ class MenuBuilder:
         self.add_action(
             icon_path,
             text=self.tr('&Configure'),
-            callback=self.run,
-            parent=self.iface.mainWindow())
+            callback=self.run_configure,
+            parent=self.iface.mainWindow(),
+            status_tip=self.tr("Configuring the link to the database "
+                               "where menu's definition will be stored")
+        )
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -193,11 +178,9 @@ class MenuBuilder:
             self.iface.removePluginMenu(
                 self.tr('&Menu Builder'),
                 action)
-            self.iface.removeToolBarIcon(action)
-        # remove the toolbar
-        del self.toolbar
+        self.iface.removeToolBarIcon(action)
 
-    def run(self):
+    def run_configure(self):
         """Run method that performs all the real work"""
         # show the dialog
         self.dlg.show()

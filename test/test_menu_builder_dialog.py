@@ -8,7 +8,7 @@
 
 """
 
-__author__ = 'ludovic.delaune@oslandia.com'
+__author__ = 'ludovic dot delaune@oslandia dot com'
 __date__ = '2015-07-23'
 __copyright__ = 'Copyright 2015, Oslandia'
 

@@ -1,7 +1,7 @@
-# This file contains metadata for your plugin. Since 
-# version 2.0 of QGIS this is the proper way to supply 
-# information about a plugin. The old method of 
-# embedding metadata in __init__.py will 
+# This file contains metadata for your plugin. Since
+# version 2.0 of QGIS this is the proper way to supply
+# information about a plugin. The old method of
+# embedding metadata in __init__.py will
 # is no longer supported since version 2.0.
 
 # This file should be included when you package your plugin.# Mandatory items:
@@ -12,7 +12,7 @@ qgisMinimumVersion=2.0
 description=Create your own menu with shortcuts to layers, projects and so on
 version=0.1
 author=Oslandia
-email=ludovic.delaune@oslandia.com
+email=ludovic dot delaune@oslandia dot com
 
 # End of mandatory metadata
 
