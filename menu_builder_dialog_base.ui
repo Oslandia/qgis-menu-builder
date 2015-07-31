@@ -26,7 +26,7 @@
     <enum>Qt::Horizontal</enum>
    </property>
    <property name="standardButtons">
-    <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+    <set>QDialogButtonBox::Cancel|QDialogButtonBox::Save</set>
    </property>
   </widget>
   <widget class="QComboBox" name="combo_database">
@@ -95,6 +95,32 @@
    </property>
    <property name="text">
     <string>Choose profile</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="button_add_menu">
+   <property name="geometry">
+    <rect>
+     <x>440</x>
+     <y>100</y>
+     <width>31</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_add_menu">
+   <property name="geometry">
+    <rect>
+     <x>480</x>
+     <y>108</y>
+     <width>161</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Add a menu</string>
    </property>
   </widget>
  </widget>

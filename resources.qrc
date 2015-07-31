@@ -1,5 +1,11 @@
 <RCC>
     <qresource prefix="/plugins/MenuBuilder" >
-        <file>icon.png</file>
+        <file>resources/icon.png</file>
+    </qresource>
+    <qresource prefix="/plugins/MenuBuilder" >
+        <file>resources/menu.svg</file>
+    </qresource>
+    <qresource prefix="/plugins/MenuBuilder" >
+        <file>resources/plus.svg</file>
     </qresource>
 </RCC>

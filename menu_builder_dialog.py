@@ -21,24 +21,27 @@
  ***************************************************************************/
 """
 from __future__ import unicode_literals
+from collections import defaultdict
 import os
 
+import psycopg2
 from PyQt4.QtCore import (
-    Qt, QSettings, QObject, SIGNAL, pyqtSlot, QAbstractItemModel, QRect
+    Qt, QSettings, QObject, SIGNAL,
+    QAbstractItemModel, QRect
 )
 from PyQt4.QtGui import (
-    QMessageBox, QDialog, QAbstractItemView,
-    QStandardItem, QStandardItemModel, QTreeView
+    QIcon, QMessageBox, QDialog, QStandardItem,
+    QStandardItemModel, QTreeView, QAbstractItemView
 )
 from PyQt4 import uic
 from qgis.core import QgsBrowserModel, QgsDataSourceURI, QgsCredentials
 from qgis.core import QgsMimeDataUtils
 
 
-import psycopg2
-
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'menu_builder_dialog_base.ui'))
+
+QGIS_MIMETYPE = 'application/x-vnd.qgis.qgis.uri'
 
 
 class MenuBuilderDialog(QDialog, FORM_CLASS):
@@ -55,6 +58,8 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.combo_database.addItems(keys)
         settings.endGroup()
 
+        self.button_add_menu.setIcon(QIcon(":/plugins/MenuBuilder/resources/plus.svg"))
+
         # connect to database when it has been selected
         QObject.connect(
             self.combo_database,
@@ -65,48 +70,37 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.browser = QgsBrowserModel()
 
         QObject.connect(
-            self.source,
-            SIGNAL("clicked(QModelIndex)"),
-            self.debug_source
+            self.button_add_menu,
+            SIGNAL("released()"),
+            self.add_menu
         )
 
         self.target = CustomQtTreeView(self)
         self.target.setGeometry(QRect(440, 150, 371, 451))
         self.target.setAcceptDrops(True)
+        self.target.setDragEnabled(True)
         self.target.setDragDropMode(QAbstractItemView.DragDrop)
         self.target.setObjectName("target")
+        self.target.setDropIndicatorShown(True)
+        self.target.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
         self.source.setModel(self.browser)
-        self.source.setDragEnabled(True)
         self.source.setHeaderHidden(True)
         self.source.setAcceptDrops(False)
-        self.source.setDropIndicatorShown(True)
+        self.source.setDragEnabled(True)
+        self.source.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
-        self.menu = MyModel()
+        self.menu = MenuTreeModel(self)
         self.menu.setHorizontalHeaderLabels(["Menus"])
-        self.menu.setItem(0, QStandardItem('Menu1'))
-        self.menu.setItem(1, QStandardItem('Menu2'))
         self.target.setModel(self.menu)
         self.target.setAnimated(True)
 
         self.profile_list = []
 
-    @pyqtSlot("QModelIndex")
-    def debug_source(self, index):
-        if not self.browser.hasChildren(index):
-            data = self.browser.mimeData([index])
-            uri = QgsMimeDataUtils.decodeUriList(data)[0].uri
-            print uri
-
-    def update_profiles(self):
-        """
-        update profile list
-        """
-        cur = self.connection.cursor()
-        cur.execute("select tablename from pg_tables where schemaname = 'public'")
-        tables = cur.fetchall()
-        self.combo_profile.clear()
-        self.combo_profile.addItems([row[0] for row in tables])
+    def add_menu(self):
+        item = QStandardItem('NewMenu')
+        item.setIcon(QIcon(':/plugins/MenuBuilder/resources/menu.svg'))
+        self.menu.insertRow(self.menu.rowCount(), item)
 
     def set_connection(self):
         selected = self.combo_database.currentText()
@@ -121,7 +115,8 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         uri = QgsDataSourceURI()
 
         settingsList = ["service", "host", "port", "database", "username", "password"]
-        service, host, port, database, username, password = map(lambda x: settings.value(x, "", type=str), settingsList)
+        service, host, port, database, username, password = map(
+            lambda x: settings.value(x, "", type=str), settingsList)
 
         useEstimatedMetadata = settings.value("estimatedMetadata", False, type=bool)
         sslmode = settings.value("sslmode", QgsDataSourceURI.SSLprefer, type=int)
@@ -135,7 +130,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
         uri.setUseEstimatedMetadata(useEstimatedMetadata)
 
-        # try:
+        # connect to db and update profile list
         self.connect_to_uri(uri)
         self.update_profiles()
 
@@ -148,11 +143,12 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
         try:
             self.connection = psycopg2.connect(uri.connectionInfo())
-        except self.connection_error_types(), e:
+        except self.connection_error_types() as e:
             err = str(e)
             conninfo = uri.connectionInfo()
 
-            (ok, username, password) = QgsCredentials.instance().get(conninfo, username, password, err)
+            ok, username, password = QgsCredentials.instance().get(
+                conninfo, username, password, err)
             if not ok:
                 raise Exception(e)
 
@@ -164,7 +160,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
             try:
                 self.connection = psycopg2.connect(uri.connectionInfo())
-            except self.connection_error_types(), e:
+            except self.connection_error_types() as e:
                 raise Exception(e)
 
         return True
@@ -172,11 +168,67 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
     def connection_error_types(self):
         return psycopg2.InterfaceError, psycopg2.OperationalError
 
+    def update_profiles(self):
+        """
+        update profile list
+        """
+        table = 'qgis_menubuilder_metadata'
+
+        cur = self.connection.cursor()
+        cur.execute("""
+            select 1
+            from pg_tables
+                where schemaname = 'public'
+                and tablename = '{}'
+            """.format(table))
+        tables = cur.fetchone()
+        if not tables:
+            box = QMessageBox(
+                QMessageBox.Warning,
+                "Menu Builder",
+                self.tr("Table 'public.{}' not found in this database, "
+                        "would you like to create it now ?".format(table)),
+                QMessageBox.Cancel | QMessageBox.Yes | QMessageBox.Close,
+                self
+            )
+            ret = box.exec_()
+            if ret == QMessageBox.Cancel:
+                return False
+            elif ret == QMessageBox.Yes:
+                cur.execute("""
+                    create table {} (
+                        id serial,
+                        name varchar,
+                        profile varchar,
+                        model_index varchar,
+                        datasource_uri bytea
+                    )
+                    """.format(table))
+                self.connection.commit()
+                return False
+
+        cur.execute("""
+            select distinct(profile) from {}
+            """.format(table))
+        profiles = [row[0] for row in cur.fetchall()]
+        self.combo_profile.clear()
+        self.combo_profile.addItems(profiles)
+
     def create_table(self):
         """
         Creates the metadata table in public schema
         """
-        pass
+        raise NotImplementedError()
+
+    def save_changes(self):
+        """
+        Save changes in the postgres table
+        """
+        raise NotImplementedError()
+
+    def accept(self):
+        if self.save_changes():
+            QDialog.reject(self)
 
 
 class CustomQtTreeView(QTreeView):
@@ -184,27 +236,67 @@ class CustomQtTreeView(QTreeView):
         event.acceptProposedAction()
 
     def dragEnterEvent(self, event):
-        event.acceptProposedAction()
+        # refuse if it's not a qgis mimetype
+        print 'entering drag'
+        print [not idx.parent() for idx in self.selectedIndexes()]
+        if any([not idx.parent() for idx in self.selectedIndexes()]):
+            return False
+        if event.mimeData().hasFormat(QGIS_MIMETYPE):
+            event.acceptProposedAction()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Delete:
+            self.dropItem()
+
+    def dropItem(self):
+        model = self.selectionModel().model()
+        parents = defaultdict(list)
+        for idx in self.selectedIndexes():
+            parents[idx.parent()].append(idx)
+
+        for parent, idx_list in parents.items():
+            for diff, index in enumerate(idx_list):
+                model.removeRow(index.row() - diff, parent)
 
 
-class MyModel(QStandardItemModel):
+class MenuTreeModel(QStandardItemModel):
     def dropMimeData(self, mimedata, action, row, column, parentIndex):
         """
         Handles the dropping of an item onto the model.
-        De-serializes the data into a TreeItem instance and inserts it into the model.
+        De-serializes the data and inserts it into the model.
         """
-        # if not mimedata.hasFormat( 'application/x-pynode-item-instance' ):
-        # return False
-        data = QgsMimeDataUtils.decodeUriList(mimedata)[0]
-        print 'name', data.name
-        print 'data', data.data
-        print 'uri', data.uri
-        item = QStandardItem(data.name)
-        item.setData([mimedata])
+        # decode data using qgis helpers
+        uri_list = QgsMimeDataUtils.decodeUriList(mimedata)
+        if not uri_list:
+            return False
+        # find parent item
         dropParent = self.itemFromIndex(parentIndex)
-        dropParent.appendRow(item)
+        if not dropParent:
+            return False
+        # each uri will become a new item
+        for uri in uri_list:
+            item = QStandardItem(uri.name)
+            item.setData(uri)
+            dropParent.appendRow(item)
         dropParent.emitDataChanged()
+
         return True
+
+    def mimeData(self, indexes):
+        """
+        Used to serialize data
+        """
+        if not indexes:
+            return 0
+        items = [self.itemFromIndex(idx) for idx in indexes]
+        if not items:
+            return 0
+        # reencode items
+        mimedata = QgsMimeDataUtils.encodeUriList([item.data() for item in items])
+        return mimedata
+
+    def mimeTypes(self):
+        return [QGIS_MIMETYPE]
 
     def flags(self, index):
         defaultFlags = QAbstractItemModel.flags(self, index)
@@ -214,3 +306,6 @@ class MyModel(QStandardItemModel):
                     Qt.ItemIsDropEnabled | defaultFlags
         else:
             return Qt.ItemIsDropEnabled | defaultFlags
+
+    def supportedDropActions(self):
+        return Qt.CopyAction | Qt.MoveAction

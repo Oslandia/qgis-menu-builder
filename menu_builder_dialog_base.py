@@ -29,7 +29,7 @@ class Ui_MenuBuilderDialogBase(object):
         self.button_box = QtGui.QDialogButtonBox(MenuBuilderDialogBase)
         self.button_box.setGeometry(QtCore.QRect(630, 610, 181, 32))
         self.button_box.setOrientation(QtCore.Qt.Horizontal)
-        self.button_box.setStandardButtons(QtGui.QDialogButtonBox.Cancel|QtGui.QDialogButtonBox.Ok)
+        self.button_box.setStandardButtons(QtGui.QDialogButtonBox.Cancel|QtGui.QDialogButtonBox.Save)
         self.button_box.setObjectName(_fromUtf8("button_box"))
         self.combo_database = QtGui.QComboBox(MenuBuilderDialogBase)
         self.combo_database.setGeometry(QtCore.QRect(40, 40, 261, 31))
@@ -50,6 +50,13 @@ class Ui_MenuBuilderDialogBase(object):
         self.label_profile = QtGui.QLabel(MenuBuilderDialogBase)
         self.label_profile.setGeometry(QtCore.QRect(40, 80, 151, 16))
         self.label_profile.setObjectName(_fromUtf8("label_profile"))
+        self.button_add_menu = QtGui.QPushButton(MenuBuilderDialogBase)
+        self.button_add_menu.setGeometry(QtCore.QRect(440, 100, 31, 31))
+        self.button_add_menu.setText(_fromUtf8(""))
+        self.button_add_menu.setObjectName(_fromUtf8("button_add_menu"))
+        self.label_add_menu = QtGui.QLabel(MenuBuilderDialogBase)
+        self.label_add_menu.setGeometry(QtCore.QRect(480, 108, 161, 16))
+        self.label_add_menu.setObjectName(_fromUtf8("label_add_menu"))
 
         self.retranslateUi(MenuBuilderDialogBase)
         QtCore.QObject.connect(self.button_box, QtCore.SIGNAL(_fromUtf8("accepted()")), MenuBuilderDialogBase.accept)
@@ -60,4 +67,5 @@ class Ui_MenuBuilderDialogBase(object):
         MenuBuilderDialogBase.setWindowTitle(_translate("MenuBuilderDialogBase", "Menu Builder", None))
         self.label_database.setText(_translate("MenuBuilderDialogBase", "Choose database where profiles are stored", None))
         self.label_profile.setText(_translate("MenuBuilderDialogBase", "Choose profile", None))
+        self.label_add_menu.setText(_translate("MenuBuilderDialogBase", "Add a menu", None))
 
