@@ -185,6 +185,7 @@ class MenuBuilder:
         """Run method that performs all the real work"""
         # show the dialog
         self.dlg.show()
+        self.dlg.set_connection()
         # Run the dialog event loop
         result = self.dlg.exec_()
         # See if OK was pressed

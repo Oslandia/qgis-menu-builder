@@ -8,5 +8,8 @@
     <qresource prefix="/plugins/MenuBuilder" >
         <file>resources/plus.svg</file>
     </qresource>
+    <qresource prefix="/plugins/MenuBuilder" >
+        <file>resources/delete.svg</file>
+    </qresource>
 </RCC>
 

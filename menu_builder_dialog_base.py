@@ -57,6 +57,10 @@ class Ui_MenuBuilderDialogBase(object):
         self.label_add_menu = QtGui.QLabel(MenuBuilderDialogBase)
         self.label_add_menu.setGeometry(QtCore.QRect(480, 108, 161, 16))
         self.label_add_menu.setObjectName(_fromUtf8("label_add_menu"))
+        self.button_delete_profile = QtGui.QPushButton(MenuBuilderDialogBase)
+        self.button_delete_profile.setGeometry(QtCore.QRect(310, 100, 31, 31))
+        self.button_delete_profile.setText(_fromUtf8(""))
+        self.button_delete_profile.setObjectName(_fromUtf8("button_delete_profile"))
 
         self.retranslateUi(MenuBuilderDialogBase)
         QtCore.QObject.connect(self.button_box, QtCore.SIGNAL(_fromUtf8("accepted()")), MenuBuilderDialogBase.accept)

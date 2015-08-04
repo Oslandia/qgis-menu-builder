@@ -24,13 +24,12 @@ from __future__ import unicode_literals
 from collections import defaultdict
 import os
 import json
-import pickle
 
 import psycopg2
 
 from PyQt4.QtCore import (
     Qt, QSettings, QObject, SIGNAL,
-    QAbstractItemModel, QRect
+    QAbstractItemModel, QRect, QMimeData
 )
 from PyQt4.QtGui import (
     QIcon, QMessageBox, QDialog, QStandardItem,
@@ -60,31 +59,21 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         keys = settings.childGroups()
         self.combo_database.addItems(keys)
         self.combo_database.setCurrentIndex(-1)
+        self.combo_profile.setCurrentIndex(-1)
         settings.endGroup()
 
+        # add custom icons
         self.button_add_menu.setIcon(QIcon(":/plugins/MenuBuilder/resources/plus.svg"))
+        self.button_delete_profile.setIcon(QIcon(":/plugins/MenuBuilder/resources/delete.svg"))
 
-        # connect to database when it has been selected
-        QObject.connect(
-            self.combo_database,
-            SIGNAL("activated(int)"),
-            self.set_connection
-        )
+        # connect signals and handlers
+        QObject.connect(self.combo_database, SIGNAL("activated(int)"), self.set_connection)
+        QObject.connect(self.combo_database, SIGNAL("activated(int)"), self.set_connection)
+        QObject.connect(self.combo_profile, SIGNAL("activated(int)"), self.load_profile)
+        QObject.connect(self.button_add_menu, SIGNAL("released()"), self.add_menu)
+        QObject.connect(self.button_delete_profile, SIGNAL("released()"), self.del_profile)
 
-        QObject.connect(
-            self.combo_profile,
-            SIGNAL("activated(int)"),
-            self.load_profile
-        )
-
-        self.browser = QgsBrowserModel()
-
-        QObject.connect(
-            self.button_add_menu,
-            SIGNAL("released()"),
-            self.add_menu
-        )
-
+        # custom qtreeview
         self.target = CustomQtTreeView(self)
         self.target.setGeometry(QRect(440, 150, 371, 451))
         self.target.setAcceptDrops(True)
@@ -94,6 +83,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.target.setDropIndicatorShown(True)
         self.target.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
+        self.browser = QgsBrowserModel()
         self.source.setModel(self.browser)
         self.source.setHeaderHidden(True)
         self.source.setAcceptDrops(False)
@@ -160,6 +150,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.update_profiles()
 
     def connect_to_uri(self, uri):
+        self.close_connection()
         self.host = uri.host() or os.environ.get('PGHOST')
         self.port = uri.port() or os.environ.get('PGPORT')
 
@@ -230,10 +221,26 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         cur.execute("""
             select distinct(profile) from {}
             """.format(self.table))
+        self.connection.commit()
         profiles = [row[0] for row in cur.fetchall()]
         self.combo_profile.clear()
         self.combo_profile.addItems(profiles)
-        self.load_profile(self.combo_profile.currentIndex())
+
+    def del_profile(self):
+        """
+        Delete profile currently selected
+        """
+        idx = self.combo_profile.currentIndex()
+        profile = self.combo_profile.itemText(idx)
+        self.combo_profile.removeItem(idx)
+        cur = self.connection.cursor()
+        cur.execute("""
+            select name, profile, model_index, datasource_uri
+            from {}
+            where profile = '{}'
+            order by id
+            """.format(self.table, profile))
+        self.connection.commit()
 
     def load_profile(self, current_index):
         profile_name = self.combo_profile.itemText(current_index)
@@ -247,25 +254,42 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             ).exec_()
             return
 
+        # bag storing unique menu entries
+        menu_list = set()
+
         cur = self.connection.cursor()
+        select = """
+            select name, profile, model_index, datasource_uri
+            from {}
+            where profile = '{}'
+            order by id
+            """.format(self.table, profile_name)
         try:
-            cur.execute("""
-                select name, profile, model_index, datasource_uri
-                from {}
-                where profile = '{}'
-                order by id
-                """.format(self.table, profile_name))
+            cur.execute(select)
             rows = cur.fetchall()
             self.menu.clear()
             for row in rows:
                 parent = self.menu.invisibleRootItem()
-                for idx, name in json.loads(row[2]):
-                    # add menus
+                indexes = json.loads(row[2])
+                for count, (idx, name) in enumerate(indexes):
+                    if '{}-{}'.format(idx, name) in menu_list and count < len(indexes) - 1:
+                        parent = self.menu.item(idx, 0)
+                        # already there
+                        continue
+                    menu_list.add('{}-{}'.format(idx, name))
+                    # add menus and leaf
                     item = QStandardItem(name)
-                    item.setData(row[3])
+                    qmimedata = QMimeData()
+                    qmimedata.setData(QGIS_MIMETYPE, str(row[3]))
+                    item.setData(QgsMimeDataUtils.decodeUriList(qmimedata)[0])
+                    if count < len(indexes) - 1:
+                        # menu icon
+                        item.setIcon(QIcon(':/plugins/MenuBuilder/resources/menu.svg'))
+                    else:
+                        # layer icon
+                        pass
                     parent.appendRow(item)
                     parent = item
-                # print 'name', row[0], 'profile', row[1], 'model_index', json.loads(row[2]), row[3]
 
         except self.pg_error_types() as e:
             self.connection.rollback()
@@ -275,6 +299,15 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         """
         Save changes in the postgres table
         """
+        if not self.combo_profile.currentText():
+            QMessageBox(
+                QMessageBox.Warning,
+                "Menu Builder",
+                self.tr("Profile cannot be empty"),
+                QMessageBox.Ok,
+                self
+            ).exec_()
+            return False
         if not getattr(self, 'connection', False):
             QMessageBox(
                 QMessageBox.Warning,
@@ -288,7 +321,8 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         try:
             cur.execute("delete from {} where profile = '{}'".format(
                 self.table, self.combo_profile.currentText()))
-            for item, uri in self.target.iteritems():
+            for item, data in self.target.iteritems():
+                qmimedata = QgsMimeDataUtils.encodeUriList([data]).data(QGIS_MIMETYPE)
                 cur.execute("""
                 insert into {} (name,profile,model_index,datasource_uri)
                 values ('{}', '{}', '{}', {})
@@ -297,18 +331,29 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                     item[-1][1],
                     self.combo_profile.currentText(),
                     json.dumps(item),
-                    psycopg2.Binary(uri.encode('utf-8'))
+                    psycopg2.Binary(str(qmimedata))
                 ))
-        except psycopg2.ProgrammingError as e:
+        except self.pg_error_types() as e:
             self.connection.rollback()
             raise e
 
         self.connection.commit()
+        self.update_profiles()
         return True
 
     def accept(self):
         if self.save_changes():
             QDialog.reject(self)
+            self.close_connection()
+
+    def reject(self):
+        self.close_connection()
+        QDialog.reject(self)
+
+    def close_connection(self):
+        """close current pg connection if exists"""
+        if getattr(self, 'connection', False):
+            self.connection.close()
 
 
 class CustomQtTreeView(QTreeView):
@@ -363,7 +408,7 @@ class CustomQtTreeView(QTreeView):
                 # add leaf
                 sibling = list(identifier)
                 sibling.append([child.row(), child.text()])
-                yield sibling, child.data().uri
+                yield sibling, child.data()
 
 
 class MenuTreeModel(QStandardItemModel):
