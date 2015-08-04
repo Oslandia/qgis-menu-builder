@@ -59,6 +59,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         settings.beginGroup("/PostgreSQL/connections")
         keys = settings.childGroups()
         self.combo_database.addItems(keys)
+        self.combo_database.setCurrentIndex(-1)
         settings.endGroup()
 
         self.button_add_menu.setIcon(QIcon(":/plugins/MenuBuilder/resources/plus.svg"))
