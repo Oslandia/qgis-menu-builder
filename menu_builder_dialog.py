@@ -21,9 +21,10 @@
  ***************************************************************************/
 """
 from __future__ import unicode_literals
-from collections import defaultdict
 import os
 import json
+from contextlib import contextmanager
+from collections import defaultdict
 
 import psycopg2
 
@@ -149,6 +150,15 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.connect_to_uri(uri)
         self.update_profiles()
 
+    @contextmanager
+    def transaction(self):
+        try:
+            yield
+            self.connection.commit()
+        except self.pg_error_types() as e:
+            self.connection.rollback()
+            raise e
+
     def connect_to_uri(self, uri):
         self.close_connection()
         self.host = uri.host() or os.environ.get('PGHOST')
@@ -185,46 +195,46 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         """
         update profile list
         """
-        cur = self.connection.cursor()
-        cur.execute("""
-            select 1
-            from pg_tables
-                where schemaname = 'public'
-                and tablename = '{}'
-            """.format(self.table))
-        tables = cur.fetchone()
-        if not tables:
-            box = QMessageBox(
-                QMessageBox.Warning,
-                "Menu Builder",
-                self.tr("Table 'public.{}' not found in this database, "
-                        "would you like to create it now ?".format(self.table)),
-                QMessageBox.Cancel | QMessageBox.Yes,
-                self
-            )
-            ret = box.exec_()
-            if ret == QMessageBox.Cancel:
-                return False
-            elif ret == QMessageBox.Yes:
-                cur.execute("""
-                    create table {} (
-                        id serial,
-                        name varchar,
-                        profile varchar,
-                        model_index varchar,
-                        datasource_uri bytea
-                    )
-                    """.format(self.table))
-                self.connection.commit()
-                return False
+        with self.transaction():
+            cur = self.connection.cursor()
+            cur.execute("""
+                select 1
+                from pg_tables
+                    where schemaname = 'public'
+                    and tablename = '{}'
+                """.format(self.table))
+            tables = cur.fetchone()
+            if not tables:
+                box = QMessageBox(
+                    QMessageBox.Warning,
+                    "Menu Builder",
+                    self.tr("Table 'public.{}' not found in this database, "
+                            "would you like to create it now ?".format(self.table)),
+                    QMessageBox.Cancel | QMessageBox.Yes,
+                    self
+                )
+                ret = box.exec_()
+                if ret == QMessageBox.Cancel:
+                    return False
+                elif ret == QMessageBox.Yes:
+                    cur.execute("""
+                        create table {} (
+                            id serial,
+                            name varchar,
+                            profile varchar,
+                            model_index varchar,
+                            datasource_uri bytea
+                        )
+                        """.format(self.table))
+                    self.connection.commit()
+                    return False
 
-        cur.execute("""
-            select distinct(profile) from {}
-            """.format(self.table))
-        self.connection.commit()
-        profiles = [row[0] for row in cur.fetchall()]
-        self.combo_profile.clear()
-        self.combo_profile.addItems(profiles)
+            cur.execute("""
+                select distinct(profile) from {}
+                """.format(self.table))
+            profiles = [row[0] for row in cur.fetchall()]
+            self.combo_profile.clear()
+            self.combo_profile.addItems(profiles)
 
     def del_profile(self):
         """
@@ -232,15 +242,24 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         """
         idx = self.combo_profile.currentIndex()
         profile = self.combo_profile.itemText(idx)
-        self.combo_profile.removeItem(idx)
-        cur = self.connection.cursor()
-        cur.execute("""
-            select name, profile, model_index, datasource_uri
-            from {}
-            where profile = '{}'
-            order by id
-            """.format(self.table, profile))
-        self.connection.commit()
+        box = QMessageBox(
+            QMessageBox.Warning,
+            "Menu Builder",
+            self.tr("Delete '{}' profile ?".format(profile)),
+            QMessageBox.Cancel | QMessageBox.Yes,
+            self
+        )
+        ret = box.exec_()
+        if ret == QMessageBox.Cancel:
+            return False
+        elif ret == QMessageBox.Yes:
+            self.combo_profile.removeItem(idx)
+            with self.transaction():
+                cur = self.connection.cursor()
+                cur.execute("""
+                    delete from {}
+                    where profile = '{}'
+                    """.format(self.table, profile))
 
     def load_profile(self, current_index):
         profile_name = self.combo_profile.itemText(current_index)
@@ -257,14 +276,14 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         # bag storing unique menu entries
         menu_list = set()
 
-        cur = self.connection.cursor()
-        select = """
-            select name, profile, model_index, datasource_uri
-            from {}
-            where profile = '{}'
-            order by id
-            """.format(self.table, profile_name)
-        try:
+        with self.transaction():
+            cur = self.connection.cursor()
+            select = """
+                select name, profile, model_index, datasource_uri
+                from {}
+                where profile = '{}'
+                order by id
+                """.format(self.table, profile_name)
             cur.execute(select)
             rows = cur.fetchall()
             self.menu.clear()
@@ -281,7 +300,8 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                     item = QStandardItem(name)
                     qmimedata = QMimeData()
                     qmimedata.setData(QGIS_MIMETYPE, str(row[3]))
-                    item.setData(QgsMimeDataUtils.decodeUriList(qmimedata)[0])
+                    uri_struct = QgsMimeDataUtils.decodeUriList(qmimedata)[0]
+                    item.setData(uri_struct)
                     if count < len(indexes) - 1:
                         # menu icon
                         item.setIcon(QIcon(':/plugins/MenuBuilder/resources/menu.svg'))
@@ -290,10 +310,6 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                         pass
                     parent.appendRow(item)
                     parent = item
-
-        except self.pg_error_types() as e:
-            self.connection.rollback()
-            raise e
 
     def save_changes(self):
         """
@@ -317,8 +333,9 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 self
             ).exec_()
             return
-        cur = self.connection.cursor()
-        try:
+
+        with self.transaction():
+            cur = self.connection.cursor()
             cur.execute("delete from {} where profile = '{}'".format(
                 self.table, self.combo_profile.currentText()))
             for item, data in self.target.iteritems():
@@ -333,11 +350,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                     json.dumps(item),
                     psycopg2.Binary(str(qmimedata))
                 ))
-        except self.pg_error_types() as e:
-            self.connection.rollback()
-            raise e
 
-        self.connection.commit()
         self.update_profiles()
         return True
 
