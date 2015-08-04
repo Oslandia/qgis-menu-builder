@@ -45,7 +45,7 @@ class Ui_MenuBuilderDialogBase(object):
         self.source.header().setVisible(True)
         self.combo_profile = QtGui.QComboBox(MenuBuilderDialogBase)
         self.combo_profile.setGeometry(QtCore.QRect(40, 100, 261, 31))
-        self.combo_profile.setEditable(False)
+        self.combo_profile.setEditable(True)
         self.combo_profile.setObjectName(_fromUtf8("combo_profile"))
         self.label_profile = QtGui.QLabel(MenuBuilderDialogBase)
         self.label_profile.setGeometry(QtCore.QRect(40, 80, 151, 16))

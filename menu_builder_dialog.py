@@ -23,8 +23,11 @@
 from __future__ import unicode_literals
 from collections import defaultdict
 import os
+import json
+import pickle
 
 import psycopg2
+
 from PyQt4.QtCore import (
     Qt, QSettings, QObject, SIGNAL,
     QAbstractItemModel, QRect
@@ -67,6 +70,12 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             self.set_connection
         )
 
+        QObject.connect(
+            self.combo_profile,
+            SIGNAL("activated(int)"),
+            self.load_profile
+        )
+
         self.browser = QgsBrowserModel()
 
         QObject.connect(
@@ -96,14 +105,29 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.target.setAnimated(True)
 
         self.profile_list = []
+        self.table = 'qgis_menubuilder_metadata'
 
     def add_menu(self):
         item = QStandardItem('NewMenu')
         item.setIcon(QIcon(':/plugins/MenuBuilder/resources/menu.svg'))
-        self.menu.insertRow(self.menu.rowCount(), item)
+        # select current index selected and insert as a sibling
+        brother = self.target.selectedIndexes()
+
+        if not brother or not brother[0].parent():
+            # no selection, add menu at the top level
+            self.menu.insertRow(self.menu.rowCount(), item)
+            return
+
+        parent = self.menu.itemFromIndex(brother[0].parent())
+        if not parent:
+            self.menu.insertRow(self.menu.rowCount(), item)
+            return
+        parent.appendRow(item)
 
     def set_connection(self):
         selected = self.combo_database.currentText()
+        if not selected:
+            return
         settings = QSettings()
         settings.beginGroup("/PostgreSQL/connections/{}".format(selected))
 
@@ -143,7 +167,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
         try:
             self.connection = psycopg2.connect(uri.connectionInfo())
-        except self.connection_error_types() as e:
+        except self.pg_error_types() as e:
             err = str(e)
             conninfo = uri.connectionInfo()
 
@@ -158,37 +182,32 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             if password:
                 uri.setPassword(password)
 
-            try:
-                self.connection = psycopg2.connect(uri.connectionInfo())
-            except self.connection_error_types() as e:
-                raise Exception(e)
+            self.connection = psycopg2.connect(uri.connectionInfo())
 
         return True
 
-    def connection_error_types(self):
+    def pg_error_types(self):
         return psycopg2.InterfaceError, psycopg2.OperationalError
 
     def update_profiles(self):
         """
         update profile list
         """
-        table = 'qgis_menubuilder_metadata'
-
         cur = self.connection.cursor()
         cur.execute("""
             select 1
             from pg_tables
                 where schemaname = 'public'
                 and tablename = '{}'
-            """.format(table))
+            """.format(self.table))
         tables = cur.fetchone()
         if not tables:
             box = QMessageBox(
                 QMessageBox.Warning,
                 "Menu Builder",
                 self.tr("Table 'public.{}' not found in this database, "
-                        "would you like to create it now ?".format(table)),
-                QMessageBox.Cancel | QMessageBox.Yes | QMessageBox.Close,
+                        "would you like to create it now ?".format(self.table)),
+                QMessageBox.Cancel | QMessageBox.Yes,
                 self
             )
             ret = box.exec_()
@@ -203,28 +222,88 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                         model_index varchar,
                         datasource_uri bytea
                     )
-                    """.format(table))
+                    """.format(self.table))
                 self.connection.commit()
                 return False
 
         cur.execute("""
             select distinct(profile) from {}
-            """.format(table))
+            """.format(self.table))
         profiles = [row[0] for row in cur.fetchall()]
         self.combo_profile.clear()
         self.combo_profile.addItems(profiles)
+        self.load_profile(self.combo_profile.currentIndex())
 
-    def create_table(self):
-        """
-        Creates the metadata table in public schema
-        """
-        raise NotImplementedError()
+    def load_profile(self, current_index):
+        profile_name = self.combo_profile.itemText(current_index)
+        if not getattr(self, 'connection', False):
+            QMessageBox(
+                QMessageBox.Warning,
+                "Menu Builder",
+                self.tr("Not connected to any database, please select one"),
+                QMessageBox.Ok,
+                self
+            ).exec_()
+            return
+
+        cur = self.connection.cursor()
+        try:
+            cur.execute("""
+                select name, profile, model_index, datasource_uri
+                from {}
+                where profile = '{}'
+                order by id
+                """.format(self.table, profile_name))
+            rows = cur.fetchall()
+            self.menu.clear()
+            for row in rows:
+                parent = self.menu.invisibleRootItem()
+                for idx, name in json.loads(row[2]):
+                    # add menus
+                    item = QStandardItem(name)
+                    item.setData(row[3])
+                    parent.appendRow(item)
+                    parent = item
+                # print 'name', row[0], 'profile', row[1], 'model_index', json.loads(row[2]), row[3]
+
+        except self.pg_error_types() as e:
+            self.connection.rollback()
+            raise e
 
     def save_changes(self):
         """
         Save changes in the postgres table
         """
-        raise NotImplementedError()
+        if not getattr(self, 'connection', False):
+            QMessageBox(
+                QMessageBox.Warning,
+                "Menu Builder",
+                self.tr("Please select database and profile before saving !"),
+                QMessageBox.Ok,
+                self
+            ).exec_()
+            return
+        cur = self.connection.cursor()
+        try:
+            cur.execute("delete from {} where profile = '{}'".format(
+                self.table, self.combo_profile.currentText()))
+            for item, uri in self.target.iteritems():
+                cur.execute("""
+                insert into {} (name,profile,model_index,datasource_uri)
+                values ('{}', '{}', '{}', {})
+                """.format(
+                    self.table,
+                    item[-1][1],
+                    self.combo_profile.currentText(),
+                    json.dumps(item),
+                    psycopg2.Binary(uri.encode('utf-8'))
+                ))
+        except psycopg2.ProgrammingError as e:
+            self.connection.rollback()
+            raise e
+
+        self.connection.commit()
+        return True
 
     def accept(self):
         if self.save_changes():
@@ -237,8 +316,6 @@ class CustomQtTreeView(QTreeView):
 
     def dragEnterEvent(self, event):
         # refuse if it's not a qgis mimetype
-        print 'entering drag'
-        print [not idx.parent() for idx in self.selectedIndexes()]
         if any([not idx.parent() for idx in self.selectedIndexes()]):
             return False
         if event.mimeData().hasFormat(QGIS_MIMETYPE):
@@ -257,6 +334,35 @@ class CustomQtTreeView(QTreeView):
         for parent, idx_list in parents.items():
             for diff, index in enumerate(idx_list):
                 model.removeRow(index.row() - diff, parent)
+
+    def iteritems(self, level=0):
+        """
+        Dump model to store in database.
+        Generates each level recursively
+        """
+        rowcount = self.model().rowCount()
+        for itemidx in range(rowcount):
+            # iterate over parents
+            parent = self.model().itemFromIndex(self.model().index(itemidx, 0))
+            for item, uri in self.traverse_tree(parent, []):
+                yield item, uri
+
+    def traverse_tree(self, parent, identifier):
+        """
+        Iterate over childs, recursively
+        """
+        identifier.append([parent.row(), parent.text()])
+        for row in range(parent.rowCount()):
+            child = parent.child(row)
+            if child.hasChildren():
+                # child is a menu ?
+                for item in self.traverse_tree(child, identifier):
+                    yield item
+            else:
+                # add leaf
+                sibling = list(identifier)
+                sibling.append([child.row(), child.text()])
+                yield sibling, child.data().uri
 
 
 class MenuTreeModel(QStandardItemModel):
