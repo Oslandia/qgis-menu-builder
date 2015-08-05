@@ -33,12 +33,14 @@ from PyQt4.QtCore import (
     QAbstractItemModel, QRect, QMimeData
 )
 from PyQt4.QtGui import (
-    QIcon, QMessageBox, QDialog, QStandardItem,
+    QIcon, QMessageBox, QDialog, QStandardItem, QMenu, QAction,
     QStandardItemModel, QTreeView, QAbstractItemView
 )
 from PyQt4 import uic
-from qgis.core import QgsBrowserModel, QgsDataSourceURI, QgsCredentials
-from qgis.core import QgsMimeDataUtils
+from qgis.core import (
+    QgsMapLayerRegistry, QgsBrowserModel, QgsDataSourceURI,
+    QgsCredentials, QgsVectorLayer, QgsMimeDataUtils
+)
 
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -48,11 +50,14 @@ QGIS_MIMETYPE = 'application/x-vnd.qgis.qgis.uri'
 
 
 class MenuBuilderDialog(QDialog, FORM_CLASS):
-    def __init__(self, parent=None):
+    def __init__(self, uiparent):
         """Constructor"""
-        super(MenuBuilderDialog, self).__init__(parent)
+        super(MenuBuilderDialog, self).__init__()
 
         self.setupUi(self)
+
+        # reference to caller
+        self.uiparent = uiparent
 
         # add list of defined postgres connections
         settings = QSettings()
@@ -98,6 +103,10 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
         self.profile_list = []
         self.table = 'qgis_menubuilder_metadata'
+
+        self.layer_handler = {
+            'vector': self.load_vector
+        }
 
     def add_menu(self):
         item = QStandardItem('NewMenu')
@@ -258,7 +267,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 cur = self.connection.cursor()
                 cur.execute("""
                     delete from {}
-                    where profile = '{}'
+                    where profile = '++++++++{}'
                     """.format(self.table, profile))
 
     def load_profile(self, current_index):
@@ -273,8 +282,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             ).exec_()
             return
 
-        # bag storing unique menu entries
-        menu_list = set()
+        menudict = {}
 
         with self.transaction():
             cur = self.connection.cursor()
@@ -282,34 +290,38 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 select name, profile, model_index, datasource_uri
                 from {}
                 where profile = '{}'
-                order by id
                 """.format(self.table, profile_name)
             cur.execute(select)
             rows = cur.fetchall()
             self.menu.clear()
-            for row in rows:
-                parent = self.menu.invisibleRootItem()
-                indexes = json.loads(row[2])
-                for count, (idx, name) in enumerate(indexes):
-                    if '{}-{}'.format(idx, name) in menu_list and count < len(indexes) - 1:
-                        parent = self.menu.item(idx, 0)
-                        # already there
+            for name, profile, model_index, datasource_uri in rows:
+                menu = self.menu.invisibleRootItem()
+                indexes = json.loads(model_index)
+                parent = '{}-{}/'.format(indexes[0][0], indexes[0][1])
+                for idx, subname in indexes[:-1]:
+                    parent += '{}-{}/'.format(idx, subname)
+                    if parent in menudict:
+                        # already created entry
+                        menu = menudict[parent]
                         continue
-                    menu_list.add('{}-{}'.format(idx, name))
-                    # add menus and leaf
-                    item = QStandardItem(name)
+                    # create menu
+                    item = QStandardItem(subname)
                     qmimedata = QMimeData()
-                    qmimedata.setData(QGIS_MIMETYPE, str(row[3]))
+                    qmimedata.setData(QGIS_MIMETYPE, str(datasource_uri))
                     uri_struct = QgsMimeDataUtils.decodeUriList(qmimedata)[0]
                     item.setData(uri_struct)
-                    if count < len(indexes) - 1:
-                        # menu icon
-                        item.setIcon(QIcon(':/plugins/MenuBuilder/resources/menu.svg'))
-                    else:
-                        # layer icon
-                        pass
-                    parent.appendRow(item)
-                    parent = item
+                    item.setIcon(QIcon(':/plugins/MenuBuilder/resources/menu.svg'))
+                    menu.appendRow(item)
+                    menudict[parent] = item
+
+                # add leaf (layer item)
+                item = QStandardItem(name)
+                qmimedata = QMimeData()
+                qmimedata.setData(QGIS_MIMETYPE, str(datasource_uri))
+                uri_struct = QgsMimeDataUtils.decodeUriList(qmimedata)[0]
+                item.setData(uri_struct)
+                # item.setIcon(QIcon(':/plugins/MenuBuilder/resources/menu.svg'))
+                menudict[parent].appendRow(item)
 
     def save_changes(self):
         """
@@ -351,8 +363,77 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                     psycopg2.Binary(str(qmimedata))
                 ))
 
+        self.load_menus()
         self.update_profiles()
         return True
+
+    def load_menus(self):
+        # for menu in self.uiparent.menus:
+        #     self.self.uiparent.iface.mainWindow().removeAction(menu)
+        # retrieve model
+        with self.transaction():
+            cur = self.connection.cursor()
+            select = """
+                select name, model_index, datasource_uri
+                from {}
+                where profile = '{}'
+                """.format(self.table, self.combo_profile.currentText())
+            cur.execute(select)
+            rows = cur.fetchall()
+
+        # tree save reference to each
+        menudict = {}
+        # item accessor ex: '0-menu/0-submenu/1-item/'
+        parent = ''
+        # reference to qgis main menu bar
+        menubar = self.uiparent.iface.mainWindow().menuBar()
+
+        for name, model_index, datasource_uri in rows:
+            qmimedata = QMimeData()
+            qmimedata.setData(QGIS_MIMETYPE, str(datasource_uri))
+            uri_struct = QgsMimeDataUtils.decodeUriList(qmimedata)[0]
+            indexes = json.loads(model_index)
+            # root menu
+            parent = '{}-{}/'.format(indexes[0][0], indexes[0][1])
+            menu = QMenu(self.uiparent.iface.mainWindow())
+            self.uiparent.menus.append(menu)
+            menu.setObjectName(indexes[0][1])
+            menu.setTitle(indexes[0][1])
+            menubar.insertMenu(self.uiparent.iface.firstRightStandardMenu().menuAction(), menu)
+            for idx, subname in indexes[1:-1]:
+                # intermediate submenus
+                parent += '{}-{}/'.format(idx, subname)
+                if parent not in menudict:
+                    submenu = QMenu(self.uiparent.iface.mainWindow())
+                    menu.addMenu(submenu)
+                    submenu.setObjectName(subname)
+                    menu.setTitle(subname)
+                    menu = submenu
+                    # store it for later use
+                    menudict[parent] = menu
+                    continue
+                # already treated
+                menu = menudict[parent]
+
+            # last item = layer
+            layer = QAction(name, self.uiparent.iface.mainWindow())
+            # layer.setToolTip(
+            # layer.setIcon(QIcon("vecteur.png"))
+            # layer.setStatusTip("This is status tip")
+            layer.setData(uri_struct.uri)
+            layer.setWhatsThis(uri_struct.providerKey)
+            layer.triggered.connect(self.layer_handler[uri_struct.layerType])
+            menu.addAction(layer)
+
+    def load_vector(self):
+        print 'load_vector'
+        action = self.sender()
+        layer = QgsVectorLayer(
+            action.data(),  # uri
+            action.text(),  # layer name
+            action.whatsThis()  # provider name
+        )
+        QgsMapLayerRegistry.instance().addMapLayer(layer)
 
     def accept(self):
         if self.save_changes():
