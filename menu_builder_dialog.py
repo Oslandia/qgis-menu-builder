@@ -288,6 +288,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         with self.transaction():
             cur = self.connection.cursor()
             select = """
+                SET bytea_output TO escape;
                 select name, profile, model_index, datasource_uri
                 from {}
                 where profile = '{}'
@@ -376,6 +377,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         with self.transaction():
             cur = self.connection.cursor()
             select = """
+                SET bytea_output TO escape;
                 select name, model_index, datasource_uri
                 from {}
                 where profile = '{}'
@@ -471,6 +473,8 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
     def close_connection(self):
         """close current pg connection if exists"""
         if getattr(self, 'connection', False):
+            if self.connection.closed:
+                return
             self.connection.close()
 
 
