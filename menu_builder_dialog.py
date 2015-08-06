@@ -22,6 +22,7 @@
 """
 from __future__ import unicode_literals
 import os
+import re
 import json
 from contextlib import contextmanager
 from collections import defaultdict
@@ -424,7 +425,26 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             layer = QAction(name, self.uiparent.iface.mainWindow())
             # layer.setToolTip(
             # layer.setIcon(QIcon("vecteur.png"))
-            # layer.setStatusTip("This is status tip")
+            if uri_struct.providerKey == 'postgres':
+                # extract table name
+                # set tooltip to postgres comment
+                schema, table = re.match(
+                    '.*table=(.*)\(.*',
+                    uri_struct.uri
+                ).group(1).strip().replace('"', '').split('.')
+                with self.transaction():
+                    cur = self.connection.cursor()
+                    select = """
+                        select description from pg_description
+                        join pg_class on pg_description.objoid = pg_class.oid
+                        join pg_namespace on pg_class.relnamespace = pg_namespace.oid
+                        where relname = '{}' and nspname='{}'
+                        """.format(table, schema)
+                    cur.execute(select)
+                    row = cur.fetchone()
+                    if row:
+                        layer.setStatusTip(row[0])
+                        layer.setToolTip(row[0])
             layer.setData(uri_struct.uri)
             layer.setWhatsThis(uri_struct.providerKey)
             layer.triggered.connect(self.layer_handler[uri_struct.layerType])
