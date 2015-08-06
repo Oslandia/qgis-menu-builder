@@ -425,32 +425,36 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
             # last item = layer
             layer = QAction(name, self.uiparent.iface.mainWindow())
-            # layer.setToolTip(
             # layer.setIcon(QIcon("vecteur.png"))
             if uri_struct.providerKey == 'postgres':
-                # extract table name
                 # set tooltip to postgres comment
-                schema, table = re.match(
-                    '.*table=(.*)\(.*',
-                    uri_struct.uri
-                ).group(1).strip().replace('"', '').split('.')
-                with self.transaction():
-                    cur = self.connection.cursor()
-                    select = """
-                        select description from pg_description
-                        join pg_class on pg_description.objoid = pg_class.oid
-                        join pg_namespace on pg_class.relnamespace = pg_namespace.oid
-                        where relname = '{}' and nspname='{}'
-                        """.format(table, schema)
-                    cur.execute(select)
-                    row = cur.fetchone()
-                    if row:
-                        layer.setStatusTip(row[0])
-                        layer.setToolTip(row[0])
+                comment = self.get_table_comment(uri_struct.uri)
+                layer.setStatusTip(comment)
+                layer.setToolTip(comment)
+
             layer.setData(uri_struct.uri)
             layer.setWhatsThis(uri_struct.providerKey)
             layer.triggered.connect(self.layer_handler[uri_struct.layerType])
             menu.addAction(layer)
+
+    def get_table_comment(self, uri):
+        schema, table = re.match(
+            '.*table=(.*)\(.*',
+            uri
+        ).group(1).strip().replace('"', '').split('.')
+        with self.transaction():
+            cur = self.connection.cursor()
+            select = """
+                select description from pg_description
+                join pg_class on pg_description.objoid = pg_class.oid
+                join pg_namespace on pg_class.relnamespace = pg_namespace.oid
+                where relname = '{}' and nspname='{}'
+                """.format(table, schema)
+            cur.execute(select)
+            row = cur.fetchone()
+            if row:
+                return row[0]
+        return ''
 
     def load_vector(self):
         action = self.sender()
