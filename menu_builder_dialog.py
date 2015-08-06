@@ -368,9 +368,10 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         return True
 
     def load_menus(self):
-        # for menu in self.uiparent.menus:
-        #     self.self.uiparent.iface.mainWindow().removeAction(menu)
-        # retrieve model
+        # remove previous menus
+        for menu in self.uiparent.menus:
+            self.uiparent.iface.mainWindow().menuBar().removeAction(menu.menuAction())
+
         with self.transaction():
             cur = self.connection.cursor()
             select = """
@@ -381,7 +382,6 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             cur.execute(select)
             rows = cur.fetchall()
 
-        # tree save reference to each
         menudict = {}
         # item accessor ex: '0-menu/0-submenu/1-item/'
         parent = ''
@@ -395,17 +395,22 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             indexes = json.loads(model_index)
             # root menu
             parent = '{}-{}/'.format(indexes[0][0], indexes[0][1])
-            menu = QMenu(self.uiparent.iface.mainWindow())
-            self.uiparent.menus.append(menu)
-            menu.setObjectName(indexes[0][1])
-            menu.setTitle(indexes[0][1])
-            menubar.insertMenu(self.uiparent.iface.firstRightStandardMenu().menuAction(), menu)
+            if parent not in menudict:
+                menu = QMenu(self.uiparent.iface.mainWindow())
+                self.uiparent.menus.append(menu)
+                menu.setObjectName(indexes[0][1])
+                menu.setTitle(indexes[0][1])
+                menubar.insertMenu(self.uiparent.iface.firstRightStandardMenu().menuAction(), menu)
+                menudict[parent] = menu
+            else:
+                # menu already there
+                menu = menudict[parent]
+
             for idx, subname in indexes[1:-1]:
                 # intermediate submenus
                 parent += '{}-{}/'.format(idx, subname)
                 if parent not in menudict:
-                    submenu = QMenu(self.uiparent.iface.mainWindow())
-                    menu.addMenu(submenu)
+                    submenu = menu.addMenu(subname)
                     submenu.setObjectName(subname)
                     menu.setTitle(subname)
                     menu = submenu
@@ -426,7 +431,6 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             menu.addAction(layer)
 
     def load_vector(self):
-        print 'load_vector'
         action = self.sender()
         layer = QgsVectorLayer(
             action.data(),  # uri
