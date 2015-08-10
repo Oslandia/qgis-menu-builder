@@ -35,7 +35,7 @@ from PyQt4.QtCore import (
 )
 from PyQt4.QtGui import (
     QIcon, QMessageBox, QDialog, QStandardItem, QMenu, QAction,
-    QStandardItemModel, QTreeView, QAbstractItemView
+    QStandardItemModel, QTreeView, QAbstractItemView, QSizePolicy
 )
 from PyQt4 import uic
 from qgis.core import (
@@ -48,6 +48,16 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'menu_builder_dialog_base.ui'))
 
 QGIS_MIMETYPE = 'application/x-vnd.qgis.qgis.uri'
+
+
+ICON_MAPPER = {
+    'postgres': ":/plugins/MenuBuilder/resources/postgis.svg",
+    'WMS': ":/plugins/MenuBuilder/resources/wms.svg",
+    'WFS': ":/plugins/MenuBuilder/resources/wfs.svg",
+    'OWS': ":/plugins/MenuBuilder/resources/ows.svg",
+    'spatialite': ":/plugins/MenuBuilder/resources/spatialite.svg",
+    'mssql': ":/plugins/MenuBuilder/resources/mssql.svg",
+}
 
 
 class MenuBuilderDialog(QDialog, FORM_CLASS):
@@ -89,6 +99,13 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.target.setObjectName("target")
         self.target.setDropIndicatorShown(True)
         self.target.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.target.sizePolicy().hasHeightForWidth())
+        self.target.setSizePolicy(sizePolicy)
+        self.target.setAutoFillBackground(True)
+        self.verticalLayout_2.addWidget(self.target)
 
         self.browser = QgsBrowserModel()
         self.source.setModel(self.browser)
@@ -321,6 +338,8 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 qmimedata = QMimeData()
                 qmimedata.setData(QGIS_MIMETYPE, str(datasource_uri))
                 uri_struct = QgsMimeDataUtils.decodeUriList(qmimedata)[0]
+                if uri_struct.providerKey in ICON_MAPPER:
+                    item.setIcon(QIcon(ICON_MAPPER[uri_struct.providerKey]))
                 item.setData(uri_struct)
                 # item.setIcon(QIcon(':/plugins/MenuBuilder/resources/menu.svg'))
                 menudict[parent].appendRow(item)
@@ -425,7 +444,8 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
             # last item = layer
             layer = QAction(name, self.uiparent.iface.mainWindow())
-            # layer.setIcon(QIcon("vecteur.png"))
+            if uri_struct.providerKey in ICON_MAPPER:
+                layer.setIcon(QIcon(ICON_MAPPER[uri_struct.providerKey]))
             if uri_struct.providerKey == 'postgres':
                 # set tooltip to postgres comment
                 comment = self.get_table_comment(uri_struct.uri)
@@ -555,6 +575,8 @@ class MenuTreeModel(QStandardItemModel):
         for uri in uri_list:
             item = QStandardItem(uri.name)
             item.setData(uri)
+            if uri.providerKey in ICON_MAPPER:
+                item.setIcon(QIcon(ICON_MAPPER[uri.providerKey]))
             dropParent.appendRow(item)
         dropParent.emitDataChanged()
 

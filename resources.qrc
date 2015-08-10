@@ -1,18 +1,17 @@
 <RCC>
     <qresource prefix="/plugins/MenuBuilder" >
         <file>resources/icon.png</file>
-    </qresource>
-    <qresource prefix="/plugins/MenuBuilder" >
         <file>resources/menu.svg</file>
-    </qresource>
-    <qresource prefix="/plugins/MenuBuilder" >
         <file>resources/plus.svg</file>
-    </qresource>
-    <qresource prefix="/plugins/MenuBuilder" >
         <file>resources/delete.svg</file>
-    </qresource>
-    <qresource prefix="/plugins/MenuBuilder" >
         <file>resources/settings.svg</file>
+        <file>resources/wfs.svg</file>
+        <file>resources/wms.svg</file>
+        <file>resources/wcs.svg</file>
+        <file>resources/mssql.svg</file>
+        <file>resources/postgis.svg</file>
+        <file>resources/spatialite.svg</file>
+        <file>resources/ows.svg</file>
     </qresource>
 </RCC>
 
