@@ -23,14 +23,14 @@
 from __future__ import unicode_literals
 from os import path
 
-from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, QRect
-from PyQt4.QtGui import QAction, QIcon, QDockWidget, QWidget, QAbstractItemView
+from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
+from PyQt4.QtGui import QAction, QIcon
 
 # Initialize Qt resources from file resources.py
 import resources_rc
 
 # Import the code for the dialog
-from menu_builder_dialog import MenuBuilderDialog, CustomQtTreeView
+from menu_builder_dialog import MenuBuilderDialog
 import os.path
 
 
@@ -72,23 +72,6 @@ class MenuBuilder:
 
         # Create the dialog (after translation) and keep reference
         self.dlg = MenuBuilderDialog(self)
-        self.dockWidget = QDockWidget(self.iface.mainWindow())
-        self.dockWidget.resize(400, 300)
-        self.dockWidget.setFloating(True)
-        self.dockWidget.setObjectName(self.tr("Menu Tree"))
-
-        # add a dock widget
-        self.dockWidgetContents = QWidget()
-        self.dockWidgetContents.setObjectName("dockWidgetContents")
-        self.treeView = CustomQtTreeView(self.dockWidgetContents)
-        self.treeView.setGeometry(QRect(0, 0, 401, 271))
-        self.treeView.setHeaderHidden(True)
-        self.treeView.setDragEnabled(True)
-        self.treeView.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self.treeView.setAnimated(True)
-        self.treeView.setObjectName("treeView")
-        self.dockWidget.setWidget(self.dockWidgetContents)
-        self.treeView.setModel(self.dlg.menu)
 
         # Declare instance attributes
         self.plugin_name = self.tr('&Menu Builder')
@@ -124,12 +107,6 @@ class MenuBuilder:
         self.iface.addPluginToMenu(self.plugin_name, configure)
         self.actions.append(configure)
 
-        dock_action = QAction(self.tr('&Show me the dock'), self.iface.mainWindow())
-        dock_action.setEnabled(True)
-        dock_action.triggered.connect(self.run_dock)
-        self.iface.addPluginToMenu(self.plugin_name, dock_action)
-        self.actions.append(dock_action)
-
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
@@ -143,6 +120,3 @@ class MenuBuilder:
         self.dlg.set_connection()
         # Run the dialog event loop
         self.dlg.exec_()
-
-    def run_dock(self):
-        self.dockWidget.show()

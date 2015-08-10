@@ -26,6 +26,7 @@ import re
 import json
 from contextlib import contextmanager
 from collections import defaultdict
+from functools import wraps, partial
 
 import psycopg2
 
@@ -35,12 +36,13 @@ from PyQt4.QtCore import (
 )
 from PyQt4.QtGui import (
     QIcon, QMessageBox, QDialog, QStandardItem, QMenu, QAction,
-    QStandardItemModel, QTreeView, QAbstractItemView, QSizePolicy
+    QStandardItemModel, QTreeView, QAbstractItemView,
+    QDockWidget, QWidget, QVBoxLayout, QSizePolicy
 )
 from PyQt4 import uic
 from qgis.core import (
     QgsMapLayerRegistry, QgsBrowserModel, QgsDataSourceURI,
-    QgsCredentials, QgsVectorLayer, QgsMimeDataUtils
+    QgsCredentials, QgsVectorLayer, QgsMimeDataUtils, QgsRasterLayer
 )
 
 
@@ -57,6 +59,8 @@ ICON_MAPPER = {
     'OWS': ":/plugins/MenuBuilder/resources/ows.svg",
     'spatialite': ":/plugins/MenuBuilder/resources/spatialite.svg",
     'mssql': ":/plugins/MenuBuilder/resources/mssql.svg",
+    'gdal': ":/plugins/MenuBuilder/resources/gdal.svg",
+    'ogr': ":/plugins/MenuBuilder/resources/ogr.svg",
 }
 
 
@@ -83,12 +87,6 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.button_add_menu.setIcon(QIcon(":/plugins/MenuBuilder/resources/plus.svg"))
         self.button_delete_profile.setIcon(QIcon(":/plugins/MenuBuilder/resources/delete.svg"))
 
-        # connect signals and handlers
-        QObject.connect(self.combo_database, SIGNAL("activated(int)"), self.set_connection)
-        QObject.connect(self.combo_profile, SIGNAL("activated(int)"), self.load_profile)
-        QObject.connect(self.button_add_menu, SIGNAL("released()"), self.add_menu)
-        QObject.connect(self.button_delete_profile, SIGNAL("released()"), self.del_profile)
-
         # custom qtreeview
         self.target = CustomQtTreeView(self)
         self.target.setGeometry(QRect(440, 150, 371, 451))
@@ -109,7 +107,6 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.browser = QgsBrowserModel()
         self.source.setModel(self.browser)
         self.source.setHeaderHidden(True)
-        self.source.setAcceptDrops(False)
         self.source.setDragEnabled(True)
         self.source.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
@@ -118,14 +115,64 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.target.setModel(self.menu)
         self.target.setAnimated(True)
 
+        # add a dock widget
+        self.dock_widget = QDockWidget("Menus", self.uiparent.iface.mainWindow())
+        self.dock_widget.resize(400, 300)
+        self.dock_widget.setFloating(True)
+        self.dock_widget.setObjectName(self.tr("Menu Tree"))
+        self.dock_widget_content = QWidget()
+        self.dock_widget.setWidget(self.dock_widget_content)
+        dockLayout = QVBoxLayout()
+        self.dock_widget_content.setLayout(dockLayout)
+        self.treeView = CustomQtTreeView(self.dock_widget_content)
+        dockLayout.addWidget(self.treeView)
+        self.treeView.setHeaderHidden(True)
+        self.treeView.setDragEnabled(True)
+        self.treeView.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.treeView.setAnimated(True)
+        self.treeView.setObjectName("treeView")
+
         self.profile_list = []
         self.table = 'qgis_menubuilder_metadata'
 
         self.layer_handler = {
-            'vector': self.load_vector
+            'vector': self.load_vector,
+            'raster': self.load_raster
         }
 
+        # connect signals and handlers
+        QObject.connect(self.combo_database, SIGNAL("activated(int)"), self.set_connection)
+        QObject.connect(self.combo_profile, SIGNAL("activated(int)"), partial(self.load_menu4profile, self.menu))
+        QObject.connect(self.button_add_menu, SIGNAL("released()"), self.add_menu)
+        QObject.connect(self.button_delete_profile, SIGNAL("released()"), self.del_profile)
+
+    def show_dock(self):
+        state = self.activate_dock.isChecked()
+        if not state:
+            # just hide widget
+            self.dock_widget.setVisible(state)
+            return
+        # dock must be read only and deepcopy of model is not supported (c++ inside!)
+        menu = MenuTreeModel(self)
+        self.load_menu4profile(menu, self.combo_profile.currentIndex())
+        menu.setHorizontalHeaderLabels(["Menus"])
+        self.treeView.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.treeView.setModel(menu)
+        self.dock_widget.setVisible(state)
+
+    def show_menus(self):
+        state = self.activate_menubar.isChecked()
+        if state:
+            self.load_menus()
+            return
+        # remove menus
+        for menu in self.uiparent.menus:
+            self.uiparent.iface.mainWindow().menuBar().removeAction(menu.menuAction())
+
     def add_menu(self):
+        """
+        Add a menu inside qtreeview
+        """
         item = QStandardItem('NewMenu')
         item.setIcon(QIcon(':/plugins/MenuBuilder/resources/menu.svg'))
         # select current index selected and insert as a sibling
@@ -174,7 +221,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
         # connect to db and update profile list
         self.connect_to_uri(uri)
-        self.update_profiles()
+        self.update_profile_list()
 
     @contextmanager
     def transaction(self):
@@ -184,6 +231,33 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         except self.pg_error_types() as e:
             self.connection.rollback()
             raise e
+
+    def check_connected(func):
+        """
+        Decorator checking if a database connection is alive before executing function
+        """
+        @wraps(func)
+        def wrapped(inst, *args, **kwargs):
+            if not getattr(inst, 'connection', False):
+                QMessageBox(
+                    QMessageBox.Warning,
+                    "Menu Builder",
+                    inst.tr("Not connected to any database, please select one"),
+                    QMessageBox.Ok,
+                    inst
+                ).exec_()
+                return
+            if inst.connection.closed:
+                QMessageBox(
+                    QMessageBox.Warning,
+                    "Menu Builder",
+                    inst.tr("Not connected to any database, please select one"),
+                    QMessageBox.Ok,
+                    inst
+                ).exec_()
+                return
+            return func(inst, *args, **kwargs)
+        return wrapped
 
     def connect_to_uri(self, uri):
         self.close_connection()
@@ -217,7 +291,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
     def pg_error_types(self):
         return psycopg2.InterfaceError, psycopg2.OperationalError
 
-    def update_profiles(self):
+    def update_profile_list(self):
         """
         update profile list
         """
@@ -259,10 +333,12 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 select distinct(profile) from {}
                 """.format(self.table))
             profiles = [row[0] for row in cur.fetchall()]
+            saved_profile = self.combo_profile.currentText()
             self.combo_profile.clear()
             self.combo_profile.addItems(profiles)
-            self.combo_profile.setCurrentIndex(-1)
+            self.combo_profile.setCurrentIndex(self.combo_profile.findText(saved_profile))
 
+    @check_connected
     def del_profile(self):
         """
         Delete profile currently selected
@@ -288,17 +364,9 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                     where profile = '++++++++{}'
                     """.format(self.table, profile))
 
-    def load_profile(self, current_index):
+    @check_connected
+    def load_menu4profile(self, model, current_index):
         profile_name = self.combo_profile.itemText(current_index)
-        if not getattr(self, 'connection', False):
-            QMessageBox(
-                QMessageBox.Warning,
-                "Menu Builder",
-                self.tr("Not connected to any database, please select one"),
-                QMessageBox.Ok,
-                self
-            ).exec_()
-            return
 
         menudict = {}
 
@@ -312,9 +380,9 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 """.format(self.table, profile_name)
             cur.execute(select)
             rows = cur.fetchall()
-            self.menu.clear()
+            model.clear()
             for name, profile, model_index, datasource_uri in rows:
-                menu = self.menu.invisibleRootItem()
+                menu = model.invisibleRootItem()
                 indexes = json.loads(model_index)
                 parent = '{}-{}/'.format(indexes[0][0], indexes[0][1])
                 for idx, subname in indexes[:-1]:
@@ -338,12 +406,15 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 qmimedata = QMimeData()
                 qmimedata.setData(QGIS_MIMETYPE, str(datasource_uri))
                 uri_struct = QgsMimeDataUtils.decodeUriList(qmimedata)[0]
+                # print uri_struct.uri
+                # print uri_struct.layerType
                 if uri_struct.providerKey in ICON_MAPPER:
                     item.setIcon(QIcon(ICON_MAPPER[uri_struct.providerKey]))
                 item.setData(uri_struct)
                 # item.setIcon(QIcon(':/plugins/MenuBuilder/resources/menu.svg'))
                 menudict[parent].appendRow(item)
 
+    @check_connected
     def save_changes(self):
         """
         Save changes in the postgres table
@@ -357,15 +428,6 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 self
             ).exec_()
             return False
-        if not getattr(self, 'connection', False):
-            QMessageBox(
-                QMessageBox.Warning,
-                "Menu Builder",
-                self.tr("Please select database and profile before saving !"),
-                QMessageBox.Ok,
-                self
-            ).exec_()
-            return
 
         with self.transaction():
             cur = self.connection.cursor()
@@ -384,11 +446,16 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                     psycopg2.Binary(str(qmimedata))
                 ))
 
-        self.load_menus()
-        self.update_profiles()
+        self.update_profile_list()
+        self.show_dock()
+        self.show_menus()
         return True
 
+    @check_connected
     def load_menus(self):
+        """
+        Load menus in the main windows qgis bar
+        """
         # remove previous menus
         for menu in self.uiparent.menus:
             self.uiparent.iface.mainWindow().menuBar().removeAction(menu.menuAction())
@@ -403,7 +470,6 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 """.format(self.table, self.combo_profile.currentText())
             cur.execute(select)
             rows = cur.fetchall()
-
         # item accessor ex: '0-menu/0-submenu/1-item/'
         menudict = {}
         # reference to parent item
@@ -486,6 +552,15 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         )
         QgsMapLayerRegistry.instance().addMapLayer(layer)
 
+    def load_raster(self):
+        action = self.sender()
+        layer = QgsRasterLayer(
+            action.data(),  # uri
+            action.text(),  # layer name
+            action.whatsThis()  # provider name
+        )
+        QgsMapLayerRegistry.instance().addMapLayer(layer)
+
     def accept(self):
         if self.save_changes():
             QDialog.reject(self)
@@ -504,10 +579,15 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
 
 class CustomQtTreeView(QTreeView):
+    def __init__(self, *args, **kwargs):
+        super(CustomQtTreeView, self).__init__(*args, **kwargs)
+
     def dragMoveEvent(self, event):
         event.acceptProposedAction()
 
     def dragEnterEvent(self, event):
+        # refuse if it's not a menu item
+        # FIXME
         # refuse if it's not a qgis mimetype
         if any([not idx.parent() for idx in self.selectedIndexes()]):
             return False
@@ -559,6 +639,9 @@ class CustomQtTreeView(QTreeView):
 
 
 class MenuTreeModel(QStandardItemModel):
+    def __init__(self, *args, **kwargs):
+        super(MenuTreeModel, self).__init__(*args, **kwargs)
+
     def dropMimeData(self, mimedata, action, row, column, parentIndex):
         """
         Handles the dropping of an item onto the model.
@@ -603,8 +686,8 @@ class MenuTreeModel(QStandardItemModel):
         defaultFlags = QAbstractItemModel.flags(self, index)
 
         if index.isValid():
-            return Qt.ItemIsEditable | Qt.ItemIsDragEnabled | \
-                    Qt.ItemIsDropEnabled | defaultFlags
+            return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable |\
+                   Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled | defaultFlags
         else:
             return Qt.ItemIsDropEnabled | defaultFlags
 

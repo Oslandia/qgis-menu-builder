@@ -12,6 +12,8 @@
         <file>resources/postgis.svg</file>
         <file>resources/spatialite.svg</file>
         <file>resources/ows.svg</file>
+        <file>resources/gdal.svg</file>
+        <file>resources/ogr.svg</file>
     </qresource>
 </RCC>
 
