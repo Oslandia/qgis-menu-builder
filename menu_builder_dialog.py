@@ -85,7 +85,6 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
         # connect signals and handlers
         QObject.connect(self.combo_database, SIGNAL("activated(int)"), self.set_connection)
-        QObject.connect(self.combo_database, SIGNAL("activated(int)"), self.set_connection)
         QObject.connect(self.combo_profile, SIGNAL("activated(int)"), self.load_profile)
         QObject.connect(self.button_add_menu, SIGNAL("released()"), self.add_menu)
         QObject.connect(self.button_delete_profile, SIGNAL("released()"), self.del_profile)
@@ -262,6 +261,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             profiles = [row[0] for row in cur.fetchall()]
             self.combo_profile.clear()
             self.combo_profile.addItems(profiles)
+            self.combo_profile.setCurrentIndex(-1)
 
     def del_profile(self):
         """
@@ -404,8 +404,9 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             cur.execute(select)
             rows = cur.fetchall()
 
-        menudict = {}
         # item accessor ex: '0-menu/0-submenu/1-item/'
+        menudict = {}
+        # reference to parent item
         parent = ''
         # reference to qgis main menu bar
         menubar = self.uiparent.iface.mainWindow().menuBar()
