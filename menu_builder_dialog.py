@@ -122,7 +122,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.dock_widget.setWidget(self.dock_widget_content)
         dock_layout = QVBoxLayout()
         self.dock_widget_content.setLayout(dock_layout)
-        self.dock_view = CustomQtTreeView(self.dock_widget_content)
+        self.dock_view = DockQtTreeView(self.dock_widget_content)
         self.dock_view.setDragDropMode(QAbstractItemView.DragOnly)
         self.dock_menu_filter = QLineEdit()
         self.dock_menu_filter.setPlaceholderText(self.tr("Filter on comments (postgis only)"))
@@ -650,6 +650,15 @@ class CustomQtTreeView(QTreeView):
                 sibling = list(identifier)
                 sibling.append([child.row(), child.text()])
                 yield sibling, child.data()
+
+
+class DockQtTreeView(CustomQtTreeView):
+    def __init__(self, *args, **kwargs):
+        super(DockQtTreeView, self).__init__(*args, **kwargs)
+
+    def keyPressEvent(self, event):
+        """override keyevent to avoid deletion of items in the dock"""
+        pass
 
 
 class MenuTreeModel(QStandardItemModel):
