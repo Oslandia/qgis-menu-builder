@@ -323,7 +323,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                     QMessageBox.Warning,
                     "Menu Builder",
                     self.tr("Table 'public.{}' not found in this database, "
-                            "would you like to create it now ?".format(self.table)),
+                            "would you like to create it now ?").format(self.table),
                     QMessageBox.Cancel | QMessageBox.Yes,
                     self
                 )
@@ -362,7 +362,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         box = QMessageBox(
             QMessageBox.Warning,
             "Menu Builder",
-            self.tr("Delete '{}' profile ?".format(profile)),
+            self.tr("Delete '{}' profile ?").format(profile),
             QMessageBox.Cancel | QMessageBox.Yes,
             self
         )
