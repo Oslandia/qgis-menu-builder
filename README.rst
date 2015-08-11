@@ -36,7 +36,9 @@ Available translations: French
 Preview
 -------
 
-.. image::
+.. image:: preview.png
+.. image:: preview_dock.png
+
 
 Credits
 =======
