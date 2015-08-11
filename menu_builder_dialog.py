@@ -373,7 +373,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 cur = self.connection.cursor()
                 cur.execute("""
                     delete from {}
-                    where profile = '++++++++{}'
+                    where profile = '{}'
                     """.format(self.table, profile))
 
     @check_connected
