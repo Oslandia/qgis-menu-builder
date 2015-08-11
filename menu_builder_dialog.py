@@ -30,14 +30,12 @@ from functools import wraps, partial
 
 import psycopg2
 
-from PyQt4.QtCore import (
-    Qt, QSettings, QObject, SIGNAL,
-    QAbstractItemModel, QRect, QMimeData
-)
+from PyQt4.QtCore import Qt, QSettings, QObject, SIGNAL, QRect, QMimeData
 from PyQt4.QtGui import (
     QIcon, QMessageBox, QDialog, QStandardItem, QMenu, QAction,
     QStandardItemModel, QTreeView, QAbstractItemView,
-    QDockWidget, QWidget, QVBoxLayout, QSizePolicy
+    QDockWidget, QWidget, QVBoxLayout, QSizePolicy,
+    QSortFilterProxyModel, QLineEdit
 )
 from PyQt4 import uic
 from qgis.core import (
@@ -96,6 +94,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.target.setObjectName("target")
         self.target.setDropIndicatorShown(True)
         self.target.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.target.setHeaderHidden(True)
         sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -111,7 +110,6 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.source.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
         self.menu = MenuTreeModel(self)
-        self.menu.setHorizontalHeaderLabels(["Menus"])
         self.target.setModel(self.menu)
         self.target.setAnimated(True)
 
@@ -122,15 +120,22 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.dock_widget.setObjectName(self.tr("Menu Tree"))
         self.dock_widget_content = QWidget()
         self.dock_widget.setWidget(self.dock_widget_content)
-        dockLayout = QVBoxLayout()
-        self.dock_widget_content.setLayout(dockLayout)
-        self.treeView = CustomQtTreeView(self.dock_widget_content)
-        dockLayout.addWidget(self.treeView)
-        self.treeView.setHeaderHidden(True)
-        self.treeView.setDragEnabled(True)
-        self.treeView.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self.treeView.setAnimated(True)
-        self.treeView.setObjectName("treeView")
+        dock_layout = QVBoxLayout()
+        self.dock_widget_content.setLayout(dock_layout)
+        self.dock_view = CustomQtTreeView(self.dock_widget_content)
+        self.dock_view.setDragDropMode(QAbstractItemView.DragOnly)
+        self.dock_menu_filter = QLineEdit()
+        self.dock_menu_filter.setPlaceholderText(self.tr("Filter on comments (postgis only)"))
+        dock_layout.addWidget(self.dock_menu_filter)
+        dock_layout.addWidget(self.dock_view)
+        self.dock_view.setHeaderHidden(True)
+        self.dock_view.setDragEnabled(True)
+        self.dock_view.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.dock_view.setAnimated(True)
+        self.dock_view.setObjectName("treeView")
+        self.proxy_model = LeafFilterProxyModel(self)
+        self.proxy_model.setFilterRole(Qt.ToolTipRole)
+        self.proxy_model.setFilterCaseSensitivity(Qt.CaseInsensitive)
 
         self.profile_list = []
         self.table = 'qgis_menubuilder_metadata'
@@ -145,6 +150,11 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         QObject.connect(self.combo_profile, SIGNAL("activated(int)"), partial(self.load_menu4profile, self.menu))
         QObject.connect(self.button_add_menu, SIGNAL("released()"), self.add_menu)
         QObject.connect(self.button_delete_profile, SIGNAL("released()"), self.del_profile)
+        QObject.connect(self.dock_menu_filter, SIGNAL("cursorPositionChanged(int, int)"), self.filter_update)
+
+    def filter_update(self, old, new):
+        text = self.dock_menu_filter.displayText()
+        self.proxy_model.setFilterRegExp(text)
 
     def show_dock(self):
         state = self.activate_dock.isChecked()
@@ -156,8 +166,10 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         menu = MenuTreeModel(self)
         self.load_menu4profile(menu, self.combo_profile.currentIndex())
         menu.setHorizontalHeaderLabels(["Menus"])
-        self.treeView.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.treeView.setModel(menu)
+        self.dock_view.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.proxy_model.setSourceModel(menu)
+        self.dock_view.setModel(self.proxy_model)
+
         self.dock_widget.setVisible(state)
 
     def show_menus(self):
@@ -406,12 +418,14 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 qmimedata = QMimeData()
                 qmimedata.setData(QGIS_MIMETYPE, str(datasource_uri))
                 uri_struct = QgsMimeDataUtils.decodeUriList(qmimedata)[0]
-                # print uri_struct.uri
-                # print uri_struct.layerType
                 if uri_struct.providerKey in ICON_MAPPER:
                     item.setIcon(QIcon(ICON_MAPPER[uri_struct.providerKey]))
                 item.setData(uri_struct)
-                # item.setIcon(QIcon(':/plugins/MenuBuilder/resources/menu.svg'))
+                if uri_struct.providerKey == 'postgres':
+                    # set What's This to postgres comment
+                    comment = self.get_table_comment(uri_struct.uri)
+                    item.setWhatsThis(comment)
+                    item.setToolTip(comment)
                 menudict[parent].appendRow(item)
 
     @check_connected
@@ -682,14 +696,58 @@ class MenuTreeModel(QStandardItemModel):
     def mimeTypes(self):
         return [QGIS_MIMETYPE]
 
-    def flags(self, index):
-        defaultFlags = QAbstractItemModel.flags(self, index)
-
-        if index.isValid():
-            return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable |\
-                   Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled | defaultFlags
-        else:
-            return Qt.ItemIsDropEnabled | defaultFlags
-
     def supportedDropActions(self):
         return Qt.CopyAction | Qt.MoveAction
+
+
+class LeafFilterProxyModel(QSortFilterProxyModel):
+    """
+    Class to override the following behaviour:
+        If a parent item doesn't match the filter,
+        none of its children will be shown.
+
+    This Model matches items which are descendants
+    or ascendants of matching items.
+    """
+
+    def filterAcceptsRow(self, row_num, source_parent):
+        """Overriding the parent function"""
+
+        # Check if the current row matches
+        if self.filter_accepts_row_itself(row_num, source_parent):
+            return True
+
+        # Traverse up all the way to root and check if any of them match
+        if self.filter_accepts_any_parent(source_parent):
+            return True
+
+        # Finally, check if any of the children match
+        return self.has_accepted_children(row_num, source_parent)
+
+    def filter_accepts_row_itself(self, row_num, parent):
+        return super(LeafFilterProxyModel, self).filterAcceptsRow(row_num, parent)
+
+    def filter_accepts_any_parent(self, parent):
+        """
+        Traverse to the root node and check if any of the
+        ancestors match the filter
+        """
+        while parent.isValid():
+            if self.filter_accepts_row_itself(parent.row(), parent.parent()):
+                return True
+            parent = parent.parent()
+        return False
+
+    def has_accepted_children(self, row_num, parent):
+        """
+        Starting from the current node as root, traverse all
+        the descendants and test if any of the children match
+        """
+        model = self.sourceModel()
+        source_index = model.index(row_num, 0, parent)
+
+        children_count = model.rowCount(source_index)
+        for i in range(children_count):
+            if self.filterAcceptsRow(i, source_index):
+                return True
+        return False
