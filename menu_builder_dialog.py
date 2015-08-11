@@ -65,15 +65,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         # reference to caller
         self.uiparent = uiparent
 
-        # add list of defined postgres connections
-        settings = QSettings()
-        settings.beginGroup("/PostgreSQL/connections")
-        keys = settings.childGroups()
-        self.combo_database.addItems(keys)
-        self.combo_database.setCurrentIndex(-1)
-        self.combo_profile.setCurrentIndex(-1)
         self.combo_profile.lineEdit().setPlaceholderText(self.tr("Profile name"))
-        settings.endGroup()
 
         # add icons
         self.button_add_menu.setIcon(QIcon(":/plugins/MenuBuilder/resources/plus.svg"))
@@ -195,7 +187,23 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             return
         parent.appendRow(item)
 
+    def update_database_list(self):
+        """update list of defined postgres connections"""
+        settings = QSettings()
+        settings.beginGroup("/PostgreSQL/connections")
+        keys = settings.childGroups()
+        self.combo_database.clear()
+        self.combo_database.addItems(keys)
+        self.combo_database.setCurrentIndex(-1)
+        settings.endGroup()
+        # clear profile list
+        self.combo_profile.clear()
+        self.combo_profile.setCurrentIndex(-1)
+
     def set_connection(self):
+        """
+        Connect to selected postgresql database
+        """
         selected = self.combo_database.currentText()
         if not selected:
             return

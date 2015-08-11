@@ -112,6 +112,6 @@ class MenuBuilder:
     def run_configure(self):
         # show the configure dialog
         self.dlg.show()
-        self.dlg.set_connection()
+        self.dlg.update_database_list()
         # Run the dialog event loop
         self.dlg.exec_()
