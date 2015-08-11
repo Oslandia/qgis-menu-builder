@@ -113,6 +113,7 @@ class MenuBuilder:
             self.iface.removePluginMenu(self.plugin_name, action)
         for menu in self.menus:
             menu.deleteLater()
+        self.iface.removeDockWidget(self.dlg.dock_widget)
 
     def run_configure(self):
         # show the configure dialog
