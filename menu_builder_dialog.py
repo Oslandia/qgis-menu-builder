@@ -2,7 +2,7 @@
 """
 /***************************************************************************
  MenuBuilderDialog
-                                 A QGIS plugin
+
  Create your own menu with shortcuts to layers, projects and so on
                              -------------------
         begin                : 2015-07-23
@@ -30,14 +30,14 @@ from functools import wraps, partial
 
 import psycopg2
 
-from PyQt4.QtCore import Qt, QSettings, QObject, SIGNAL, QRect, QMimeData
+from PyQt4 import uic
+from PyQt4.QtCore import Qt, QSettings, QRect, QMimeData
 from PyQt4.QtGui import (
     QIcon, QMessageBox, QDialog, QStandardItem, QMenu, QAction,
     QStandardItemModel, QTreeView, QAbstractItemView,
     QDockWidget, QWidget, QVBoxLayout, QSizePolicy,
     QSortFilterProxyModel, QLineEdit
 )
-from PyQt4 import uic
 from qgis.core import (
     QgsMapLayerRegistry, QgsBrowserModel, QgsDataSourceURI,
     QgsCredentials, QgsVectorLayer, QgsMimeDataUtils, QgsRasterLayer
@@ -64,7 +64,6 @@ ICON_MAPPER = {
 
 class MenuBuilderDialog(QDialog, FORM_CLASS):
     def __init__(self, uiparent):
-        """Constructor"""
         super(MenuBuilderDialog, self).__init__()
 
         self.setupUi(self)
@@ -82,7 +81,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.combo_profile.lineEdit().setPlaceholderText(self.tr("Profile name"))
         settings.endGroup()
 
-        # add custom icons
+        # add icons
         self.button_add_menu.setIcon(QIcon(":/plugins/MenuBuilder/resources/plus.svg"))
         self.button_delete_profile.setIcon(QIcon(":/plugins/MenuBuilder/resources/delete.svg"))
 
@@ -147,11 +146,11 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         }
 
         # connect signals and handlers
-        QObject.connect(self.combo_database, SIGNAL("activated(int)"), self.set_connection)
-        QObject.connect(self.combo_profile, SIGNAL("activated(int)"), partial(self.load_menu4profile, self.menu))
-        QObject.connect(self.button_add_menu, SIGNAL("released()"), self.add_menu)
-        QObject.connect(self.button_delete_profile, SIGNAL("released()"), self.del_profile)
-        QObject.connect(self.dock_menu_filter, SIGNAL("cursorPositionChanged(int, int)"), self.filter_update)
+        self.combo_database.activated.connect(self.set_connection)
+        self.combo_profile.activated.connect(partial(self.load_menu4profile, self.menu))
+        self.button_add_menu.released.connect(self.add_menu)
+        self.button_delete_profile.released.connect(self.del_profile)
+        self.dock_menu_filter.cursorPositionChanged.connect(self.filter_update)
 
     def filter_update(self, old, new):
         text = self.dock_menu_filter.displayText()
@@ -423,7 +422,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                     item.setIcon(QIcon(ICON_MAPPER[uri_struct.providerKey]))
                 item.setData(uri_struct)
                 if uri_struct.providerKey == 'postgres':
-                    # set What's This to postgres comment
+                    # set tooltip to postgres comment
                     comment = self.get_table_comment(uri_struct.uri)
                     item.setWhatsThis(comment)
                     item.setToolTip(comment)
@@ -506,7 +505,9 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 self.uiparent.menus.append(menu)
                 menu.setObjectName(indexes[0][1])
                 menu.setTitle(indexes[0][1])
-                menubar.insertMenu(self.uiparent.iface.firstRightStandardMenu().menuAction(), menu)
+                menubar.insertMenu(
+                    self.uiparent.iface.firstRightStandardMenu().menuAction(),
+                    menu)
                 menudict[parent] = menu
             else:
                 # menu already there
@@ -528,8 +529,10 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
             # last item = layer
             layer = QAction(name, self.uiparent.iface.mainWindow())
+
             if uri_struct.providerKey in ICON_MAPPER:
                 layer.setIcon(QIcon(ICON_MAPPER[uri_struct.providerKey]))
+
             if uri_struct.providerKey == 'postgres':
                 # set tooltip to postgres comment
                 comment = self.get_table_comment(uri_struct.uri)
