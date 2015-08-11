@@ -79,6 +79,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.combo_database.addItems(keys)
         self.combo_database.setCurrentIndex(-1)
         self.combo_profile.setCurrentIndex(-1)
+        self.combo_profile.lineEdit().setPlaceholderText(self.tr("Profile name"))
         settings.endGroup()
 
         # add custom icons

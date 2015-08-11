@@ -90,7 +90,7 @@
         <translation type="obsolete">Navigateur de données</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="320"/>
+        <location filename="../menu_builder_dialog.py" line="321"/>
         <source>Table &apos;public.{}&apos; not found in this database, would you like to create it now ?</source>
         <translation>Table &apos;public.{}&apos; non trouvée dans cette base, voulez vous la créer maintenant ?</translation>
     </message>
@@ -100,7 +100,7 @@
         <translation type="obsolete">Veuillez sélectionner une base de donnée avant de sauvergarder !</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="360"/>
+        <location filename="../menu_builder_dialog.py" line="361"/>
         <source>Delete &apos;{}&apos; profile ?</source>
         <translation>Supprimer le profile &apos;{}&apos; ?</translation>
     </message>
@@ -110,19 +110,24 @@
         <translation type="obsolete">Non connecté à une base, veuillez en sélectionner une</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="437"/>
+        <location filename="../menu_builder_dialog.py" line="438"/>
         <source>Profile cannot be empty</source>
         <translation>Le nom de profil ne peut être vide</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="120"/>
+        <location filename="../menu_builder_dialog.py" line="121"/>
         <source>Menu Tree</source>
         <translation>Arbre des menus</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="128"/>
+        <location filename="../menu_builder_dialog.py" line="129"/>
         <source>Filter on comments (postgis only)</source>
         <translation>Filtrer sur les commentaires (postgis uniquement)</translation>
+    </message>
+    <message>
+        <location filename="../menu_builder_dialog.py" line="82"/>
+        <source>Profile name</source>
+        <translation>Nom du profile</translation>
     </message>
 </context>
 <context>
@@ -151,7 +156,7 @@
 <context>
     <name>inst</name>
     <message>
-        <location filename="../menu_builder_dialog.py" line="263"/>
+        <location filename="../menu_builder_dialog.py" line="264"/>
         <source>Not connected to any database, please select one</source>
         <translation>Non connecté à une base, veuillez en sélectionner une</translation>
     </message>
