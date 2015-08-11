@@ -1,15 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-/***************************************************************************
- MenuBuilder
-                                 A QGIS plugin
- Create your own menu with shortcuts to layers, projects and so on
-                              -------------------
-        begin                : 2015-07-23
-        git sha              : $Format:%H$
-        copyright            : (C) 2015 by Oslandia
-        email                : ludovic dot delaune@oslandia dot com
- ***************************************************************************/
+MenuBuilder - Create your own menus with your favorite layers
+
+copyright            : (C) 2015 by Oslandia
+email                : infos@oslandia.com
 
 /***************************************************************************
  *                                                                         *
