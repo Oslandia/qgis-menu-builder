@@ -421,6 +421,8 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 if uri_struct.providerKey in ICON_MAPPER:
                     item.setIcon(QIcon(ICON_MAPPER[uri_struct.providerKey]))
                 item.setData(uri_struct)
+                # avoid placing dragged layers on it
+                item.setDropEnabled(False)
                 if uri_struct.providerKey == 'postgres':
                     # set tooltip to postgres comment
                     comment = self.get_table_comment(uri_struct.uri)
@@ -606,8 +608,6 @@ class CustomQtTreeView(QTreeView):
         event.acceptProposedAction()
 
     def dragEnterEvent(self, event):
-        # refuse if it's not a menu item
-        # FIXME
         # refuse if it's not a qgis mimetype
         if any([not idx.parent() for idx in self.selectedIndexes()]):
             return False
@@ -688,6 +688,8 @@ class MenuTreeModel(QStandardItemModel):
         for uri in uri_list:
             item = QStandardItem(uri.name)
             item.setData(uri)
+            # avoid placing dragged layers on it
+            item.setDropEnabled(False)
             if uri.providerKey in ICON_MAPPER:
                 item.setIcon(QIcon(ICON_MAPPER[uri.providerKey]))
             dropParent.appendRow(item)
