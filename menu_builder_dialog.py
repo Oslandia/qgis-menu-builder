@@ -246,7 +246,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
     def check_connected(func):
         """
-        Decorator checking if a database connection is alive before executing function
+        Decorator that checks if a database connection is active before executing function
         """
         @wraps(func)
         def wrapped(inst, *args, **kwargs):
@@ -448,6 +448,8 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             cur.execute("delete from {} where profile = '{}'".format(
                 self.table, self.combo_profile.currentText()))
             for item, data in self.target.iteritems():
+                if not data:
+                    continue
                 qmimedata = QgsMimeDataUtils.encodeUriList([data]).data(QGIS_MIMETYPE)
                 cur.execute("""
                 insert into {} (name,profile,model_index,datasource_uri)
@@ -515,7 +517,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 if parent not in menudict:
                     submenu = menu.addMenu(subname)
                     submenu.setObjectName(subname)
-                    menu.setTitle(subname)
+                    submenu.setTitle(subname)
                     menu = submenu
                     # store it for later use
                     menudict[parent] = menu
