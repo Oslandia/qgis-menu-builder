@@ -137,6 +137,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.button_add_menu.released.connect(self.add_menu)
         self.button_delete_profile.released.connect(self.del_profile)
         self.dock_menu_filter.cursorPositionChanged.connect(self.filter_update)
+        self.dock_view.doubleClicked.connect(self.load_from_index)
 
     def filter_update(self, old, new):
         text = self.dock_menu_filter.displayText()
@@ -149,11 +150,11 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             self.dock_widget.setVisible(state)
             return
         # dock must be read only and deepcopy of model is not supported (c++ inside!)
-        menu = MenuTreeModel(self)
-        self.load_menu4profile(menu, self.combo_profile.currentIndex())
-        menu.setHorizontalHeaderLabels(["Menus"])
+        self.dock_model = MenuTreeModel(self)
+        self.load_menu4profile(self.dock_model, self.combo_profile.currentIndex())
+        self.dock_model.setHorizontalHeaderLabels(["Menus"])
         self.dock_view.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.proxy_model.setSourceModel(menu)
+        self.proxy_model.setSourceModel(self.dock_model)
         self.dock_view.setModel(self.proxy_model)
 
         self.dock_widget.setVisible(state)
@@ -412,6 +413,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                     uri_struct = QgsMimeDataUtils.decodeUriList(qmimedata)[0]
                     item.setData(uri_struct)
                     item.setIcon(QIcon(':/plugins/MenuBuilder/resources/menu.svg'))
+                    item.setWhatsThis("menu")
                     menu.appendRow(item)
                     menudict[parent] = item
 
@@ -428,7 +430,6 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 if uri_struct.providerKey == 'postgres':
                     # set tooltip to postgres comment
                     comment = self.get_table_comment(uri_struct.uri)
-                    item.setWhatsThis(comment)
                     item.setToolTip(comment)
                 menudict[parent].appendRow(item)
 
@@ -566,6 +567,27 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             if row:
                 return row[0]
         return ''
+
+    def load_from_index(self, index):
+        """Load layers from selected item index"""
+        item = self.dock_model.itemFromIndex(self.proxy_model.mapToSource(index))
+        if item.whatsThis() == 'menu':
+            return
+        if item.data().layerType == 'vector':
+            layer = QgsVectorLayer(
+                item.data().uri,  # uri
+                item.text(),  # layer name
+                item.data().providerKey  # provider name
+            )
+        elif item.data().layerType == 'raster':
+            layer = QgsRasterLayer(
+                item.data().uri,  # uri
+                item.text(),  # layer name
+                item.data().providerKey  # provider name
+            )
+        if not layer:
+            return
+        QgsMapLayerRegistry.instance().addMapLayer(layer)
 
     def load_vector(self):
         action = self.sender()

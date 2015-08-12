@@ -10,6 +10,8 @@ Configuration is made easy by drag & drop from the qgis browser.
 Installation from github
 ------------------------
 
+::
+
     cd .qgis2/python/plugins/
     git clone https://github.com/Oslandia/qgis-menu-builder
 
@@ -48,8 +50,7 @@ This plugin has been developed by Oslandia (http://www.oslandia.com).
 
 Oslandia provides support and assistance for QGIS and associated tools, including this plugin.
 
-This work has been funded by The French Ministry of Ecology, Sustainable Development and Energy.
-(DREAL Rhône-Alpes)
+This work has been funded by The French Ministry of Ecology, Sustainable Development and Energy (DREAL Rhône-Alpes).
 
 License
 =======
