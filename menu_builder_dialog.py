@@ -133,7 +133,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
         # connect signals and handlers
         self.combo_database.activated.connect(self.set_connection)
-        self.combo_profile.activated.connect(partial(self.load_menu4profile, self.menu))
+        self.combo_profile.activated.connect(partial(self.load_menu4profile_idx, self.menu))
         self.button_add_menu.released.connect(self.add_menu)
         self.button_delete_profile.released.connect(self.del_profile)
         self.dock_menu_filter.cursorPositionChanged.connect(self.filter_update)
@@ -143,26 +143,27 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         text = self.dock_menu_filter.displayText()
         self.proxy_model.setFilterRegExp(text)
 
-    def show_dock(self):
-        state = self.activate_dock.isChecked()
+    def show_dock(self, state, profile=None):
         if not state:
             # just hide widget
             self.dock_widget.setVisible(state)
             return
         # dock must be read only and deepcopy of model is not supported (c++ inside!)
         self.dock_model = MenuTreeModel(self)
-        self.load_menu4profile(self.dock_model, self.combo_profile.currentIndex())
+        if profile:
+            # bypass combobox
+            self.load_menu4profile(self.dock_model, profile)
+        else:
+            self.load_menu4profile_idx(self.dock_model, self.combo_profile.currentIndex())
         self.dock_model.setHorizontalHeaderLabels(["Menus"])
         self.dock_view.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.proxy_model.setSourceModel(self.dock_model)
         self.dock_view.setModel(self.proxy_model)
-
         self.dock_widget.setVisible(state)
 
-    def show_menus(self):
-        state = self.activate_menubar.isChecked()
+    def show_menus(self, state, profile=None):
         if state:
-            self.load_menus()
+            self.load_menus(profile)
             return
         # remove menus
         for menu in self.uiparent.menus:
@@ -201,13 +202,14 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.combo_profile.clear()
         self.combo_profile.setCurrentIndex(-1)
 
-    def set_connection(self):
+    def set_connection(self, dbname=None):
         """
         Connect to selected postgresql database
         """
-        selected = self.combo_database.currentText()
+        selected = self.combo_database.currentText() or dbname
         if not selected:
             return
+
         settings = QSettings()
         settings.beginGroup("/PostgreSQL/connections/{}".format(selected))
 
@@ -379,9 +381,13 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                     where profile = '{}'
                     """.format(self.table, profile))
 
+    def load_menu4profile_idx(self, model, index):
+        """wrapper that checks combobox"""
+        profile = self.combo_profile.itemText(index)
+        self.load_menu4profile(model, profile)
+
     @check_connected
-    def load_menu4profile(self, model, current_index):
-        profile_name = self.combo_profile.itemText(current_index)
+    def load_menu4profile(self, model, profile):
 
         menudict = {}
 
@@ -392,7 +398,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 select name, profile, model_index, datasource_uri
                 from {}
                 where profile = '{}'
-                """.format(self.table, profile_name)
+                """.format(self.table, profile)
             cur.execute(select)
             rows = cur.fetchall()
             model.clear()
@@ -467,16 +473,24 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                     psycopg2.Binary(str(qmimedata))
                 ))
 
+        self.save_session(
+            self.combo_database.currentText(),
+            self.combo_profile.currentText(),
+            self.activate_dock.isChecked(),
+            self.activate_menubar.isChecked()
+        )
         self.update_profile_list()
-        self.show_dock()
-        self.show_menus()
+        self.show_dock(self.activate_dock.isChecked())
+        self.show_menus(self.activate_menubar.isChecked())
         return True
 
     @check_connected
-    def load_menus(self):
+    def load_menus(self, profile=None):
         """
         Load menus in the main windows qgis bar
         """
+        if not profile:
+            profile = self.combo_profile.currentText()
         # remove previous menus
         for menu in self.uiparent.menus:
             self.uiparent.iface.mainWindow().menuBar().removeAction(menu.menuAction())
@@ -488,7 +502,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 select name, model_index, datasource_uri
                 from {}
                 where profile = '{}'
-                """.format(self.table, self.combo_profile.currentText())
+                """.format(self.table, profile)
             cur.execute(select)
             rows = cur.fetchall()
         # item accessor ex: '0-menu/0-submenu/1-item/'
@@ -622,6 +636,27 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             if self.connection.closed:
                 return
             self.connection.close()
+
+    def save_session(self, database, profile, dock, menubar):
+        """save current profile for next session"""
+        settings = QSettings()
+        settings.setValue("MenuBuilder/database", database)
+        settings.setValue("MenuBuilder/profile",  profile)
+        settings.setValue("MenuBuilder/dock",  dock)
+        settings.setValue("MenuBuilder/menubar",  menubar)
+
+    def restore_session(self):
+        settings = QSettings()
+        database = settings.value("MenuBuilder/database", False)
+        profile = settings.value("MenuBuilder/profile", False)
+        dock = settings.value("MenuBuilder/dock", False)
+        menubar = settings.value("MenuBuilder/menubar", False)
+        if not any([database, profile]):
+            return
+
+        self.set_connection(dbname=database)
+        self.show_dock(bool(dock), profile=profile)
+        self.show_menus(bool(menubar), profile=profile)
 
 
 class CustomQtTreeView(QTreeView):

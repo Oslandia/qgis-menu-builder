@@ -64,15 +64,15 @@ class MenuBuilder:
             if qVersion() > '4.3.3':
                 QCoreApplication.installTranslator(self.translator)
 
-        # Create the dialog (after translation) and keep reference
-        self.dlg = MenuBuilderDialog(self)
-
         # Declare instance attributes
         self.plugin_name = self.tr('&Menu Builder')
         # reference to plugin actions
         self.actions = []
         # used to store active menus
         self.menus = []
+
+        # Create the dialog (after translation) and keep reference
+        self.dlg = MenuBuilderDialog(self)
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -100,6 +100,9 @@ class MenuBuilder:
         configure.setWhatsThis(self.tr("Configure menus with drag&drop from qgisbrowser"))
         self.iface.addPluginToMenu(self.plugin_name, configure)
         self.actions.append(configure)
+
+        # restore previous session if exists
+        self.dlg.restore_session()
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
