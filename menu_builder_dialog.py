@@ -419,6 +419,9 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                     uri_struct = QgsMimeDataUtils.decodeUriList(qmimedata)[0]
                     item.setData(uri_struct)
                     item.setIcon(QIcon(':/plugins/MenuBuilder/resources/menu.svg'))
+                    item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsUserCheckable |
+                                  Qt.ItemIsEnabled | Qt.ItemIsDropEnabled |
+                                  Qt.ItemIsEditable)
                     item.setWhatsThis("menu")
                     menu.appendRow(item)
                     menudict[parent] = item
@@ -667,9 +670,10 @@ class CustomQtTreeView(QTreeView):
         event.acceptProposedAction()
 
     def dragEnterEvent(self, event):
-        # refuse if it's not a qgis mimetype
-        if any([not idx.parent() for idx in self.selectedIndexes()]):
+        if not event.mimeData():
+            # don't drag menu entry
             return False
+        # refuse if it's not a qgis mimetype
         if event.mimeData().hasFormat(QGIS_MIMETYPE):
             event.acceptProposedAction()
 
@@ -761,10 +765,12 @@ class MenuTreeModel(QStandardItemModel):
         Used to serialize data
         """
         if not indexes:
-            return 0
+            return
         items = [self.itemFromIndex(idx) for idx in indexes]
         if not items:
-            return 0
+            return
+        if not all(it.data() for it in items):
+            return
         # reencode items
         mimedata = QgsMimeDataUtils.encodeUriList([item.data() for item in items])
         return mimedata
