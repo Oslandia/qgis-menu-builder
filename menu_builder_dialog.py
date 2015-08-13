@@ -111,7 +111,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.dock_view = DockQtTreeView(self.dock_widget_content)
         self.dock_view.setDragDropMode(QAbstractItemView.DragOnly)
         self.dock_menu_filter = QLineEdit()
-        self.dock_menu_filter.setPlaceholderText(self.tr("Filter on comments (postgis only)"))
+        self.dock_menu_filter.setPlaceholderText(self.tr("Filter by table description (postgis only)"))
         dock_layout.addWidget(self.dock_menu_filter)
         dock_layout.addWidget(self.dock_view)
         self.dock_view.setHeaderHidden(True)

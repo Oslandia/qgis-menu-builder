@@ -126,8 +126,8 @@
     </message>
     <message>
         <location filename="../menu_builder_dialog.py" line="114"/>
-        <source>Filter on comments (postgis only)</source>
-        <translation>Filtrer sur les commentaires (postgis uniquement)</translation>
+        <source>Filter by table description (postgis only)</source>
+        <translation>Filtrer par la description de la table (postgis uniquement)</translation>
     </message>
     <message>
         <location filename="../menu_builder_dialog.py" line="68"/>
