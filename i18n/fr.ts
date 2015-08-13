@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE TS>
-<TS version="2.0" language="fr_FR" sourcelanguage="en">
+<!DOCTYPE TS><TS version="2.0" language="fr_FR" sourcelanguage="en">
 <context>
     <name>Dialog</name>
     <message>
@@ -47,7 +46,7 @@
 <context>
     <name>MenuBuilder</name>
     <message>
-        <location filename="../menu_builder.py" line="77"/>
+        <location filename="../menu_builder.py" line="68"/>
         <source>&amp;Menu Builder</source>
         <translation>&amp;Constructeur de Menu</translation>
     </message>
@@ -67,12 +66,12 @@
         <translation type="obsolete">Arbre des menus</translation>
     </message>
     <message>
-        <location filename="../menu_builder.py" line="102"/>
+        <location filename="../menu_builder.py" line="96"/>
         <source>&amp;Configure Menus</source>
         <translation>&amp;Configurer les menus</translation>
     </message>
     <message>
-        <location filename="../menu_builder.py" line="106"/>
+        <location filename="../menu_builder.py" line="100"/>
         <source>Configure menus with drag&amp;drop from qgisbrowser</source>
         <translation>Configurer les menus avec glisser/déposer depuis le navigateur</translation>
     </message>
@@ -90,7 +89,7 @@
         <translation type="obsolete">Navigateur de données</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="321"/>
+        <location filename="../menu_builder_dialog.py" line="325"/>
         <source>Table &apos;public.{}&apos; not found in this database, would you like to create it now ?</source>
         <translation>Table &apos;public.{}&apos; non trouvée dans cette base, voulez vous la créer maintenant ?</translation>
     </message>
@@ -100,7 +99,7 @@
         <translation type="obsolete">Veuillez sélectionner une base de donnée avant de sauvergarder !</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="361"/>
+        <location filename="../menu_builder_dialog.py" line="365"/>
         <source>Delete &apos;{}&apos; profile ?</source>
         <translation>Supprimer le profile &apos;{}&apos; ?</translation>
     </message>
@@ -110,22 +109,22 @@
         <translation type="obsolete">Non connecté à une base, veuillez en sélectionner une</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="438"/>
+        <location filename="../menu_builder_dialog.py" line="457"/>
         <source>Profile cannot be empty</source>
         <translation>Le nom de profil ne peut être vide</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="121"/>
+        <location filename="../menu_builder_dialog.py" line="106"/>
         <source>Menu Tree</source>
         <translation>Arbre des menus</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="129"/>
+        <location filename="../menu_builder_dialog.py" line="114"/>
         <source>Filter on comments (postgis only)</source>
         <translation>Filtrer sur les commentaires (postgis uniquement)</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="82"/>
+        <location filename="../menu_builder_dialog.py" line="68"/>
         <source>Profile name</source>
         <translation>Nom du profile</translation>
     </message>
@@ -156,7 +155,7 @@
 <context>
     <name>inst</name>
     <message>
-        <location filename="../menu_builder_dialog.py" line="264"/>
+        <location filename="../menu_builder_dialog.py" line="268"/>
         <source>Not connected to any database, please select one</source>
         <translation>Non connecté à une base, veuillez en sélectionner une</translation>
     </message>

@@ -95,8 +95,8 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.source.setDragEnabled(True)
         self.source.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
-        self.menu = MenuTreeModel(self)
-        self.target.setModel(self.menu)
+        self.menumodel = MenuTreeModel(self)
+        self.target.setModel(self.menumodel)
         self.target.setAnimated(True)
 
         # add a dock widget
@@ -133,9 +133,9 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
         # connect signals and handlers
         self.combo_database.activated.connect(self.set_connection)
-        self.combo_profile.activated.connect(partial(self.load_menu4profile_idx, self.menu))
+        self.combo_profile.activated.connect(partial(self.update_model_idx, self.menumodel))
         self.button_add_menu.released.connect(self.add_menu)
-        self.button_delete_profile.released.connect(self.del_profile)
+        self.button_delete_profile.released.connect(self.delete_profile)
         self.dock_menu_filter.cursorPositionChanged.connect(self.filter_update)
         self.dock_view.doubleClicked.connect(self.load_from_index)
 
@@ -152,9 +152,9 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.dock_model = MenuTreeModel(self)
         if profile:
             # bypass combobox
-            self.load_menu4profile(self.dock_model, profile)
+            self.update_model(self.dock_model, profile)
         else:
-            self.load_menu4profile_idx(self.dock_model, self.combo_profile.currentIndex())
+            self.update_model_idx(self.dock_model, self.combo_profile.currentIndex())
         self.dock_model.setHorizontalHeaderLabels(["Menus"])
         self.dock_view.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.proxy_model.setSourceModel(self.dock_model)
@@ -180,12 +180,12 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
         if not brother or not brother[0].parent():
             # no selection, add menu at the top level
-            self.menu.insertRow(self.menu.rowCount(), item)
+            self.menumodel.insertRow(self.menumodel.rowCount(), item)
             return
 
-        parent = self.menu.itemFromIndex(brother[0].parent())
+        parent = self.menumodel.itemFromIndex(brother[0].parent())
         if not parent:
-            self.menu.insertRow(self.menu.rowCount(), item)
+            self.menumodel.insertRow(self.menumodel.rowCount(), item)
             return
         parent.appendRow(item)
 
@@ -310,7 +310,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
     def update_profile_list(self):
         """
-        update profile list
+        update profile list from database
         """
         with self.transaction():
             cur = self.connection.cursor()
@@ -356,7 +356,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             self.combo_profile.setCurrentIndex(self.combo_profile.findText(saved_profile))
 
     @check_connected
-    def del_profile(self):
+    def delete_profile(self):
         """
         Delete profile currently selected
         """
@@ -380,15 +380,21 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                     delete from {}
                     where profile = '{}'
                     """.format(self.table, profile))
+        self.menumodel.clear()
+        self.combo_profile.setCurrentIndex(-1)
 
-    def load_menu4profile_idx(self, model, index):
-        """wrapper that checks combobox"""
+    def update_model_idx(self, model, index):
+        """
+        wrapper that checks combobox
+        """
         profile = self.combo_profile.itemText(index)
-        self.load_menu4profile(model, profile)
+        self.update_model(model, profile)
 
     @check_connected
-    def load_menu4profile(self, model, profile):
-
+    def update_model(self, model, profile):
+        """
+        Update the model by retrieving the profile given in database
+        """
         menudict = {}
 
         with self.transaction():
@@ -644,9 +650,9 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         """save current profile for next session"""
         settings = QSettings()
         settings.setValue("MenuBuilder/database", database)
-        settings.setValue("MenuBuilder/profile",  profile)
-        settings.setValue("MenuBuilder/dock",  dock)
-        settings.setValue("MenuBuilder/menubar",  menubar)
+        settings.setValue("MenuBuilder/profile", profile)
+        settings.setValue("MenuBuilder/dock", dock)
+        settings.setValue("MenuBuilder/menubar", menubar)
 
     def restore_session(self):
         settings = QSettings()
