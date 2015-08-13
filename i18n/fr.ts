@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE TS><TS version="2.0" language="fr_FR" sourcelanguage="en">
+<!DOCTYPE TS>
+<TS version="2.0" language="fr_FR" sourcelanguage="en">
 <context>
     <name>Dialog</name>
     <message>
@@ -28,19 +29,24 @@
         <translation>Configuration des menus</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog_base.ui" line="159"/>
+        <location filename="../menu_builder_dialog_base.ui" line="191"/>
         <source>Activate profile</source>
         <translation>Activer le profil</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog_base.ui" line="166"/>
+        <location filename="../menu_builder_dialog_base.ui" line="198"/>
         <source>Main menu bar</source>
         <translation>Menu principal</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog_base.ui" line="173"/>
+        <location filename="../menu_builder_dialog_base.ui" line="205"/>
         <source>dock</source>
         <translation>dock</translation>
+    </message>
+    <message>
+        <location filename="../menu_builder_dialog_base.ui" line="147"/>
+        <source>Choose schema</source>
+        <translation>Choisir un schéma</translation>
     </message>
 </context>
 <context>
@@ -91,7 +97,7 @@
     <message>
         <location filename="../menu_builder_dialog.py" line="325"/>
         <source>Table &apos;public.{}&apos; not found in this database, would you like to create it now ?</source>
-        <translation>Table &apos;public.{}&apos; non trouvée dans cette base, voulez vous la créer maintenant ?</translation>
+        <translation type="obsolete">Table &apos;public.{}&apos; non trouvée dans cette base, voulez vous la créer maintenant ?</translation>
     </message>
     <message>
         <location filename="../menu_builder_dialog.py" line="360"/>
@@ -99,7 +105,7 @@
         <translation type="obsolete">Veuillez sélectionner une base de donnée avant de sauvergarder !</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="365"/>
+        <location filename="../menu_builder_dialog.py" line="385"/>
         <source>Delete &apos;{}&apos; profile ?</source>
         <translation>Supprimer le profile &apos;{}&apos; ?</translation>
     </message>
@@ -109,7 +115,7 @@
         <translation type="obsolete">Non connecté à une base, veuillez en sélectionner une</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="457"/>
+        <location filename="../menu_builder_dialog.py" line="480"/>
         <source>Profile cannot be empty</source>
         <translation>Le nom de profil ne peut être vide</translation>
     </message>
@@ -127,6 +133,11 @@
         <location filename="../menu_builder_dialog.py" line="68"/>
         <source>Profile name</source>
         <translation>Nom du profile</translation>
+    </message>
+    <message>
+        <location filename="../menu_builder_dialog.py" line="343"/>
+        <source>Table &apos;{}.{}&apos; not found in this database, would you like to create it now ?</source>
+        <translation>Table &apos;{}.{}&apos; non trouvée dans cette base, voulez-vous la créer maintenant ?</translation>
     </message>
 </context>
 <context>
@@ -155,7 +166,7 @@
 <context>
     <name>inst</name>
     <message>
-        <location filename="../menu_builder_dialog.py" line="268"/>
+        <location filename="../menu_builder_dialog.py" line="270"/>
         <source>Not connected to any database, please select one</source>
         <translation>Non connecté à une base, veuillez en sélectionner une</translation>
     </message>

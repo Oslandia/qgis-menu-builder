@@ -132,7 +132,8 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         }
 
         # connect signals and handlers
-        self.combo_database.activated.connect(self.set_connection)
+        self.combo_database.activated.connect(partial(self.set_connection, dbname=None))
+        self.combo_schema.activated.connect(self.update_profile_list)
         self.combo_profile.activated.connect(partial(self.update_model_idx, self.menumodel))
         self.button_add_menu.released.connect(self.add_menu)
         self.button_delete_profile.released.connect(self.delete_profile)
@@ -143,7 +144,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         text = self.dock_menu_filter.displayText()
         self.proxy_model.setFilterRegExp(text)
 
-    def show_dock(self, state, profile=None):
+    def show_dock(self, state, profile=None, schema=None):
         if not state:
             # just hide widget
             self.dock_widget.setVisible(state)
@@ -152,7 +153,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.dock_model = MenuTreeModel(self)
         if profile:
             # bypass combobox
-            self.update_model(self.dock_model, profile)
+            self.update_model(self.dock_model, schema, profile)
         else:
             self.update_model_idx(self.dock_model, self.combo_profile.currentIndex())
         self.dock_model.setHorizontalHeaderLabels(["Menus"])
@@ -161,9 +162,9 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.dock_view.setModel(self.proxy_model)
         self.dock_widget.setVisible(state)
 
-    def show_menus(self, state, profile=None):
+    def show_menus(self, state, profile=None, schema=None):
         if state:
-            self.load_menus(profile)
+            self.load_menus(profile=profile, schema=schema)
             return
         # remove menus
         for menu in self.uiparent.menus:
@@ -202,11 +203,11 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.combo_profile.clear()
         self.combo_profile.setCurrentIndex(-1)
 
-    def set_connection(self, dbname=None):
+    def set_connection(self, databaseidx, dbname=None):
         """
         Connect to selected postgresql database
         """
-        selected = self.combo_database.currentText() or dbname
+        selected = self.combo_database.itemText(databaseidx) or dbname
         if not selected:
             return
 
@@ -236,9 +237,10 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
         uri.setUseEstimatedMetadata(useEstimatedMetadata)
 
-        # connect to db and update profile list
+        # connect to db
         self.connect_to_uri(uri)
-        self.update_profile_list()
+        # update schema list
+        self.update_schema_list()
 
     @contextmanager
     def transaction(self):
@@ -308,25 +310,42 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
     def pg_error_types(self):
         return psycopg2.InterfaceError, psycopg2.OperationalError
 
-    def update_profile_list(self):
+    @check_connected
+    def update_schema_list(self):
+        self.combo_schema.clear()
+        with self.transaction():
+            cur = self.connection.cursor()
+            cur.execute("""
+                select nspname
+                from pg_namespace
+                where nspname not ilike 'pg_%'
+                and nspname not in ('pg_catalog', 'information_schema')
+                """)
+            schemas = [row[0] for row in cur.fetchall()]
+            self.combo_schema.addItems(schemas)
+
+    @check_connected
+    def update_profile_list(self, schemaidx):
         """
         update profile list from database
         """
+        schema = self.combo_schema.itemText(schemaidx)
         with self.transaction():
             cur = self.connection.cursor()
             cur.execute("""
                 select 1
                 from pg_tables
-                    where schemaname = 'public'
+                    where schemaname = '{}'
                     and tablename = '{}'
-                """.format(self.table))
+                """.format(schema, self.table))
             tables = cur.fetchone()
             if not tables:
                 box = QMessageBox(
                     QMessageBox.Warning,
                     "Menu Builder",
-                    self.tr("Table 'public.{}' not found in this database, "
-                            "would you like to create it now ?").format(self.table),
+                    self.tr("Table '{}.{}' not found in this database, "
+                            "would you like to create it now ?")
+                    .format(schema, self.table),
                     QMessageBox.Cancel | QMessageBox.Yes,
                     self
                 )
@@ -335,20 +354,20 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                     return False
                 elif ret == QMessageBox.Yes:
                     cur.execute("""
-                        create table {} (
+                        create table {}.{} (
                             id serial,
                             name varchar,
                             profile varchar,
                             model_index varchar,
                             datasource_uri bytea
                         )
-                        """.format(self.table))
+                        """.format(schema, self.table))
                     self.connection.commit()
                     return False
 
             cur.execute("""
-                select distinct(profile) from {}
-                """.format(self.table))
+                select distinct(profile) from {}.{}
+                """.format(schema, self.table))
             profiles = [row[0] for row in cur.fetchall()]
             saved_profile = self.combo_profile.currentText()
             self.combo_profile.clear()
@@ -361,6 +380,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         Delete profile currently selected
         """
         idx = self.combo_profile.currentIndex()
+        schema = self.combo_schema.currentText()
         profile = self.combo_profile.itemText(idx)
         box = QMessageBox(
             QMessageBox.Warning,
@@ -377,21 +397,22 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             with self.transaction():
                 cur = self.connection.cursor()
                 cur.execute("""
-                    delete from {}
+                    delete from {}.{}
                     where profile = '{}'
-                    """.format(self.table, profile))
+                    """.format(schema, self.table, profile))
         self.menumodel.clear()
         self.combo_profile.setCurrentIndex(-1)
 
-    def update_model_idx(self, model, index):
+    def update_model_idx(self, model, profile_index):
         """
         wrapper that checks combobox
         """
-        profile = self.combo_profile.itemText(index)
-        self.update_model(model, profile)
+        profile = self.combo_profile.itemText(profile_index)
+        schema = self.combo_schema.currentText()
+        self.update_model(model, schema, profile)
 
     @check_connected
-    def update_model(self, model, profile):
+    def update_model(self, model, schema, profile):
         """
         Update the model by retrieving the profile given in database
         """
@@ -402,9 +423,9 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             select = """
                 SET bytea_output TO escape;
                 select name, profile, model_index, datasource_uri
-                from {}
+                from {}.{}
                 where profile = '{}'
-                """.format(self.table, profile)
+                """.format(schema, self.table, profile)
             cur.execute(select)
             rows = cur.fetchall()
             model.clear()
@@ -453,7 +474,9 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         """
         Save changes in the postgres table
         """
-        if not self.combo_profile.currentText():
+        schema = self.combo_schema.currentText()
+        profile = self.combo_profile.currentText()
+        if not profile:
             QMessageBox(
                 QMessageBox.Warning,
                 "Menu Builder",
@@ -465,39 +488,43 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
         with self.transaction():
             cur = self.connection.cursor()
-            cur.execute("delete from {} where profile = '{}'".format(
-                self.table, self.combo_profile.currentText()))
+            cur.execute("delete from {}.{} where profile = '{}'".format(
+                schema, self.table, profile))
             for item, data in self.target.iteritems():
                 if not data:
                     continue
                 qmimedata = QgsMimeDataUtils.encodeUriList([data]).data(QGIS_MIMETYPE)
                 cur.execute("""
-                insert into {} (name,profile,model_index,datasource_uri)
+                insert into {}.{} (name,profile,model_index,datasource_uri)
                 values ('{}', '{}', '{}', {})
                 """.format(
+                    schema,
                     self.table,
                     item[-1][1],
-                    self.combo_profile.currentText(),
+                    profile,
                     json.dumps(item),
                     psycopg2.Binary(str(qmimedata))
                 ))
 
         self.save_session(
             self.combo_database.currentText(),
-            self.combo_profile.currentText(),
+            schema,
+            profile,
             self.activate_dock.isChecked(),
             self.activate_menubar.isChecked()
         )
-        self.update_profile_list()
+        self.update_profile_list(self.combo_schema.currentIndex())
         self.show_dock(self.activate_dock.isChecked())
         self.show_menus(self.activate_menubar.isChecked())
         return True
 
     @check_connected
-    def load_menus(self, profile=None):
+    def load_menus(self, profile=None, schema=None):
         """
         Load menus in the main windows qgis bar
         """
+        if not schema:
+            schema = self.combo_schema.currentText()
         if not profile:
             profile = self.combo_profile.currentText()
         # remove previous menus
@@ -509,9 +536,9 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             select = """
                 SET bytea_output TO escape;
                 select name, model_index, datasource_uri
-                from {}
+                from {}.{}
                 where profile = '{}'
-                """.format(self.table, profile)
+                """.format(schema, self.table, profile)
             cur.execute(select)
             rows = cur.fetchall()
         # item accessor ex: '0-menu/0-submenu/1-item/'
@@ -646,10 +673,11 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 return
             self.connection.close()
 
-    def save_session(self, database, profile, dock, menubar):
+    def save_session(self, database, schema, profile, dock, menubar):
         """save current profile for next session"""
         settings = QSettings()
         settings.setValue("MenuBuilder/database", database)
+        settings.setValue("MenuBuilder/schema", schema)
         settings.setValue("MenuBuilder/profile", profile)
         settings.setValue("MenuBuilder/dock", dock)
         settings.setValue("MenuBuilder/menubar", menubar)
@@ -657,15 +685,16 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
     def restore_session(self):
         settings = QSettings()
         database = settings.value("MenuBuilder/database", False)
+        schema = settings.value("MenuBuilder/schema", 'public')
         profile = settings.value("MenuBuilder/profile", False)
         dock = settings.value("MenuBuilder/dock", False)
         menubar = settings.value("MenuBuilder/menubar", False)
         if not any([database, profile]):
             return
 
-        self.set_connection(dbname=database)
-        self.show_dock(bool(dock), profile=profile)
-        self.show_menus(bool(menubar), profile=profile)
+        self.set_connection(0, dbname=database)
+        self.show_dock(bool(dock), profile=profile, schema=schema)
+        self.show_menus(bool(menubar), profile=profile, schema=schema)
 
 
 class CustomQtTreeView(QTreeView):
