@@ -137,10 +137,10 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.combo_profile.activated.connect(partial(self.update_model_idx, self.menumodel))
         self.button_add_menu.released.connect(self.add_menu)
         self.button_delete_profile.released.connect(self.delete_profile)
-        self.dock_menu_filter.cursorPositionChanged.connect(self.filter_update)
+        self.dock_menu_filter.textEdited.connect(self.filter_update)
         self.dock_view.doubleClicked.connect(self.load_from_index)
 
-    def filter_update(self, old, new):
+    def filter_update(self):
         text = self.dock_menu_filter.displayText()
         self.proxy_model.setFilterRegExp(text)
 
