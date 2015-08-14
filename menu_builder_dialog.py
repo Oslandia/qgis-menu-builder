@@ -197,6 +197,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         keys = settings.childGroups()
         self.combo_database.clear()
         self.combo_schema.clear()
+        self.menumodel.clear()
         self.combo_database.addItems(keys)
         self.combo_database.setCurrentIndex(-1)
         settings.endGroup()
