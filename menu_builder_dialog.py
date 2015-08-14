@@ -290,6 +290,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
         try:
             self.connection = psycopg2.connect(uri.connectionInfo())
+            self.pgencoding = self.connection.encoding
         except self.pg_error_types() as e:
             err = str(e)
             conninfo = uri.connectionInfo()
@@ -310,7 +311,9 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         return True
 
     def pg_error_types(self):
-        return psycopg2.InterfaceError, psycopg2.OperationalError
+        return psycopg2.InterfaceError,\
+               psycopg2.OperationalError,\
+               psycopg2.ProgrammingError
 
     @check_connected
     def update_schema_list(self):
@@ -488,25 +491,34 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             ).exec_()
             return False
 
-        with self.transaction():
-            cur = self.connection.cursor()
-            cur.execute("delete from {}.{} where profile = '{}'".format(
-                schema, self.table, profile))
-            for item, data in self.target.iteritems():
-                if not data:
-                    continue
-                qmimedata = QgsMimeDataUtils.encodeUriList([data]).data(QGIS_MIMETYPE)
-                cur.execute("""
-                insert into {}.{} (name,profile,model_index,datasource_uri)
-                values ('{}', '{}', '{}', {})
-                """.format(
-                    schema,
-                    self.table,
-                    item[-1][1],
-                    profile,
-                    json.dumps(item),
-                    psycopg2.Binary(str(qmimedata))
-                ))
+        try:
+            with self.transaction():
+                cur = self.connection.cursor()
+                cur.execute("delete from {}.{} where profile = '{}'".format(
+                    schema, self.table, profile))
+                for item, data in self.target.iteritems():
+                    if not data:
+                        continue
+                    qmimedata = QgsMimeDataUtils.encodeUriList([data]).data(QGIS_MIMETYPE)
+                    cur.execute("""
+                    insert into {}.{} (name,profile,model_index,datasource_uri)
+                    values ('{}', '{}', '{}', {})
+                    """.format(
+                        schema,
+                        self.table,
+                        item[-1][1],
+                        profile,
+                        json.dumps(item),
+                        psycopg2.Binary(str(qmimedata))
+                    ))
+        except psycopg2.ProgrammingError as exc:
+            QMessageBox(
+                QMessageBox.Warning,
+                "Menu Builder",
+                exc.message.decode(self.pgencoding),
+                QMessageBox.Ok,
+                self
+            ).exec_()
 
         self.save_session(
             self.combo_database.currentText(),
