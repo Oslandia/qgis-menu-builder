@@ -1,22 +1,16 @@
-#/***************************************************************************
-# MenuBuilder
-#
-# Create your own menu with shortcuts to layers, projects and so on
-#							 -------------------
-#		begin				: 2015-07-23
-#		git sha				: $Format:%H$
-#		copyright			: (C) 2015 by Oslandia
-#		email				: ludovic dot delaune@oslandia dot com
-# ***************************************************************************/
-#
-#/***************************************************************************
-# *																		 *
-# *   This program is free software; you can redistribute it and/or modify  *
-# *   it under the terms of the GNU General Public License as published by  *
-# *   the Free Software Foundation; either version 2 of the License, or	 *
-# *   (at your option) any later version.								   *
-# *																		 *
-# ***************************************************************************/
+# MenuBuilder - Create your own menus with your favorite layers
+
+# copyright            : (C) 2015 by Oslandia
+# email                : infos@oslandia.com
+
+# /***************************************************************************
+#  *                                                                         *
+#  *   This program is free software; you can redistribute it and/or modify  *
+#  *   it under the terms of the GNU General Public License as published by  *
+#  *   the Free Software Foundation; either version 2 of the License, or     *
+#  *   (at your option) any later version.                                   *
+#  *                                                                         *
+#  ***************************************************************************/
 
 #################################################
 # Edit the following to match your sources lists
@@ -97,7 +91,7 @@ test: compile transcompile
 	@echo "e.g. source run-env-linux.sh <path to qgis install>; make test"
 	@echo "----------------------"
 
-deploy: compile doc transcompile
+deploy: compile transcompile
 	@echo
 	@echo "------------------------------------------"
 	@echo "Deploying plugin to your .qgis2 directory."
@@ -111,7 +105,7 @@ deploy: compile doc transcompile
 	cp -vf $(COMPILED_RESOURCE_FILES) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 	cp -vf $(EXTRAS) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 	cp -vfr i18n $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
-	cp -vfr $(HELP) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)/help
+	# cp -vfr $(HELP) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)/help
 
 # The dclean target removes compiled python files from plugin directory
 # also deletes any .git entry

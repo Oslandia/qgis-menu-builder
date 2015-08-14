@@ -1,7 +1,8 @@
 [general]
 name=Menu Builder
 qgisMinimumVersion=2.0
-description=Create your own menus with your favorite layers. Easy configuration is done with drag & drop from the qgis browser
+description=Create your own menus with your favorite layers
+about=Create your own menus with your favorite layers. Easy configuration is done with drag & drop from the qgis browser
 version=0.1
 author=Oslandia
 email=infos@oslandia.com
