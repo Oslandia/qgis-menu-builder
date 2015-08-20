@@ -6,6 +6,13 @@ You can create several profiles with custom hierarchical menus.
 Profiles are stored in postgresql for convenience.
 Configuration is made easy by drag & drop from the qgis browser.
 
+Installation from QGIS plugin repository
+----------------------------------------
+
+This plugin is available in the official QGIS plugin repository.
+You can install it directly from within QGIS, thanks to the extension manager.
+
+http://plugins.qgis.org/plugins/MenuBuilder/
 
 Installation from github
 ------------------------
