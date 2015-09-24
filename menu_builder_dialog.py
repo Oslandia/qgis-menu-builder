@@ -763,6 +763,7 @@ class CustomQtTreeView(QTreeView):
                 # child is a menu ?
                 for item in self.traverse_tree(child, identifier):
                     yield item
+                identifier.pop()
             else:
                 # add leaf
                 sibling = list(identifier)
