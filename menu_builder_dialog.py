@@ -437,7 +437,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             for name, profile, model_index, datasource_uri in rows:
                 menu = model.invisibleRootItem()
                 indexes = json.loads(model_index)
-                parent = '{}-{}/'.format(indexes[0][0], indexes[0][1])
+                parent = ''
                 for idx, subname in indexes[:-1]:
                     parent += '{}-{}/'.format(idx, subname)
                     if parent in menudict:
@@ -457,6 +457,8 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                     item.setWhatsThis("menu")
                     menu.appendRow(item)
                     menudict[parent] = item
+                    # set current menu to the new created item
+                    menu = item
 
                 # add leaf (layer item)
                 item = QStandardItem(name)
