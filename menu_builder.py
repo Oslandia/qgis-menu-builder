@@ -18,7 +18,7 @@ from __future__ import unicode_literals
 from os import path
 
 from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
-from PyQt4.QtGui import QAction, QIcon
+from PyQt4.QtGui import QAction, QIcon, QMessageBox
 
 # Initialize Qt resources from file resources.py
 import resources_rc
@@ -102,7 +102,16 @@ class MenuBuilder:
         self.actions.append(configure)
 
         # restore previous session if exists
-        self.dlg.restore_session()
+        try:
+            self.dlg.restore_session()
+        except Exception as exc:
+            QMessageBox(
+                QMessageBox.Warning,
+                "Restoring MenuBuilder last session",
+                exc.message.decode(self.dlg.pgencoding),
+                QMessageBox.Ok,
+                self.dlg
+            ).exec_()
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""

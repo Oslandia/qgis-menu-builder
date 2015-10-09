@@ -365,7 +365,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                             name varchar,
                             profile varchar,
                             model_index varchar,
-                            datasource_uri bytea
+                            datasource_uri text
                         )
                         """.format(schema, self.table))
                     self.connection.commit()
@@ -427,7 +427,6 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         with self.transaction():
             cur = self.connection.cursor()
             select = """
-                SET bytea_output TO escape;
                 select name, profile, model_index, datasource_uri
                 from {}.{}
                 where profile = '{}'
@@ -447,9 +446,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                         continue
                     # create menu
                     item = QStandardItem(subname)
-                    qmimedata = QMimeData()
-                    qmimedata.setData(QGIS_MIMETYPE, str(datasource_uri))
-                    uri_struct = QgsMimeDataUtils.decodeUriList(qmimedata)[0]
+                    uri_struct = QgsMimeDataUtils.Uri(datasource_uri)
                     item.setData(uri_struct)
                     item.setIcon(QIcon(':/plugins/MenuBuilder/resources/menu.svg'))
                     item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsUserCheckable |
@@ -463,9 +460,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
                 # add leaf (layer item)
                 item = QStandardItem(name)
-                qmimedata = QMimeData()
-                qmimedata.setData(QGIS_MIMETYPE, str(datasource_uri))
-                uri_struct = QgsMimeDataUtils.decodeUriList(qmimedata)[0]
+                uri_struct = QgsMimeDataUtils.Uri(datasource_uri)
                 if uri_struct.providerKey in ICON_MAPPER:
                     item.setIcon(QIcon(ICON_MAPPER[uri_struct.providerKey]))
                 item.setData(uri_struct)
@@ -502,18 +497,15 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 for item, data in self.target.iteritems():
                     if not data:
                         continue
-                    qmimedata = QgsMimeDataUtils.encodeUriList([data]).data(QGIS_MIMETYPE)
                     cur.execute("""
                     insert into {}.{} (name,profile,model_index,datasource_uri)
-                    values ('{}', '{}', '{}', {})
-                    """.format(
-                        schema,
-                        self.table,
+                    values (%s, %s, %s, %s)
+                    """.format(schema, self.table), (
                         item[-1][1],
                         profile,
                         json.dumps(item),
-                        psycopg2.Binary(str(qmimedata))
-                    ))
+                        data.data())
+                    )
         except psycopg2.ProgrammingError as exc:
             QMessageBox(
                 QMessageBox.Warning,
@@ -551,7 +543,6 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         with self.transaction():
             cur = self.connection.cursor()
             select = """
-                SET bytea_output TO escape;
                 select name, model_index, datasource_uri
                 from {}.{}
                 where profile = '{}'
@@ -566,9 +557,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         menubar = self.uiparent.iface.mainWindow().menuBar()
 
         for name, model_index, datasource_uri in rows:
-            qmimedata = QMimeData()
-            qmimedata.setData(QGIS_MIMETYPE, str(datasource_uri))
-            uri_struct = QgsMimeDataUtils.decodeUriList(qmimedata)[0]
+            uri_struct = QgsMimeDataUtils.Uri(datasource_uri)
             indexes = json.loads(model_index)
             # root menu
             parent = '{}-{}/'.format(indexes[0][0], indexes[0][1])
