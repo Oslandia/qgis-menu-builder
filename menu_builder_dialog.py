@@ -290,7 +290,6 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
         try:
             self.connection = psycopg2.connect(uri.connectionInfo())
-            self.pgencoding = self.connection.encoding
         except self.pg_error_types() as e:
             err = str(e)
             conninfo = uri.connectionInfo()
@@ -307,6 +306,8 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 uri.setPassword(password)
 
             self.connection = psycopg2.connect(uri.connectionInfo())
+
+        self.pgencoding = self.connection.encoding
 
         return True
 
