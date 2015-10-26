@@ -25,7 +25,7 @@ from functools import wraps, partial
 import psycopg2
 
 from PyQt4 import uic
-from PyQt4.QtCore import Qt, QSettings, QRect, QMimeData
+from PyQt4.QtCore import Qt, QSettings, QRect
 from PyQt4.QtGui import (
     QIcon, QMessageBox, QDialog, QStandardItem, QMenu, QAction,
     QStandardItemModel, QTreeView, QAbstractItemView,
@@ -417,6 +417,13 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         schema = self.combo_schema.currentText()
         self.update_model(model, schema, profile)
 
+    def sortby_modelindex(self, rows):
+        return sorted(
+            rows,
+            key=lambda line: '/'.join(
+                ['{:04}'.format(elem[0]) for elem in json.loads(line[2])]
+            ))
+
     @check_connected
     def update_model(self, model, schema, profile):
         """
@@ -434,7 +441,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             cur.execute(select)
             rows = cur.fetchall()
             model.clear()
-            for name, profile, model_index, datasource_uri in rows:
+            for name, profile, model_index, datasource_uri in self.sortby_modelindex(rows):
                 menu = model.invisibleRootItem()
                 indexes = json.loads(model_index)
                 parent = ''
@@ -543,7 +550,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         with self.transaction():
             cur = self.connection.cursor()
             select = """
-                select name, model_index, datasource_uri
+                select name, profile, model_index, datasource_uri
                 from {}.{}
                 where profile = '{}'
                 """.format(schema, self.table, profile)
@@ -556,7 +563,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         # reference to qgis main menu bar
         menubar = self.uiparent.iface.mainWindow().menuBar()
 
-        for name, model_index, datasource_uri in rows:
+        for name, profile, model_index, datasource_uri in self.sortby_modelindex(rows):
             uri_struct = QgsMimeDataUtils.Uri(datasource_uri)
             indexes = json.loads(model_index)
             # root menu
