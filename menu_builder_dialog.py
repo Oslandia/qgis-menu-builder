@@ -341,8 +341,13 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
             cur.execute("""
                 select 1
                 from pg_tables
-                    where schemaname = '{}'
-                    and tablename = '{}'
+                    where schemaname = '{0}'
+                    and tablename = '{1}'
+                union
+                select 1
+                from pg_matviews
+                    where schemaname = '{0}'
+                    and matviewname = '{1}'
                 """.format(schema, self.table))
             tables = cur.fetchone()
             if not tables:
