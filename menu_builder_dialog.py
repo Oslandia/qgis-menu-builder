@@ -473,6 +473,9 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
                 # add leaf (layer item)
                 item = QStandardItem(name)
                 uri_struct = QgsMimeDataUtils.Uri(datasource_uri)
+                # fix layer name instead of table name
+                # usefull when the layer has been renamed in menu
+                uri_struct.name = name
                 if uri_struct.providerKey in ICON_MAPPER:
                     item.setIcon(QIcon(ICON_MAPPER[uri_struct.providerKey]))
                 item.setData(uri_struct)
