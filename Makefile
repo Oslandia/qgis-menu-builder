@@ -38,9 +38,10 @@ SOURCES = \
 PLUGINNAME = MenuBuilder
 
 PY_FILES = \
-	menu_builder.py \
-	menu_builder_dialog.py \
-	__init__.py
+    menu_builder.py \
+    menu_builder_dialog.py \
+    menu_builder_dialog_base.py \
+    __init__.py
 
 UI_FILES = menu_builder_dialog_base.ui
 
