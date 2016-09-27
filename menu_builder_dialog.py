@@ -24,7 +24,6 @@ from functools import wraps, partial
 
 import psycopg2
 
-from PyQt4 import uic
 from PyQt4.QtCore import Qt, QSettings, QRect
 from PyQt4.QtGui import (
     QIcon, QMessageBox, QDialog, QStandardItem, QMenu, QAction,
@@ -37,9 +36,7 @@ from qgis.core import (
     QgsCredentials, QgsVectorLayer, QgsMimeDataUtils, QgsRasterLayer
 )
 
-
-FORM_CLASS, _ = uic.loadUiType(os.path.join(
-    os.path.dirname(__file__), 'menu_builder_dialog_base.ui'))
+from menu_builder_dialog_base import Ui_Dialog
 
 QGIS_MIMETYPE = 'application/x-vnd.qgis.qgis.uri'
 
@@ -56,7 +53,7 @@ ICON_MAPPER = {
 }
 
 
-class MenuBuilderDialog(QDialog, FORM_CLASS):
+class MenuBuilderDialog(QDialog, Ui_Dialog):
 
     def __init__(self, uiparent):
         super(MenuBuilderDialog, self).__init__()
