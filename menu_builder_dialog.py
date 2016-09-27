@@ -29,7 +29,7 @@ from PyQt4.QtGui import (
     QIcon, QMessageBox, QDialog, QStandardItem, QMenu, QAction,
     QStandardItemModel, QTreeView, QAbstractItemView,
     QDockWidget, QWidget, QVBoxLayout, QSizePolicy,
-    QSortFilterProxyModel, QLineEdit
+    QSortFilterProxyModel, QLineEdit, QDialogButtonBox
 )
 from qgis.core import (
     QgsMapLayerRegistry, QgsBrowserModel, QgsDataSourceURI,
@@ -137,6 +137,10 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
         self.button_delete_profile.released.connect(self.delete_profile)
         self.dock_menu_filter.textEdited.connect(self.filter_update)
         self.dock_view.doubleClicked.connect(self.load_from_index)
+
+        self.buttonBox.rejected.connect(self.reject)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.button(QDialogButtonBox.Apply).clicked.connect(self.apply)
 
     def filter_update(self):
         text = self.dock_menu_filter.displayText()
@@ -488,7 +492,7 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
                 menudict[parent].appendRow(item)
 
     @check_connected
-    def save_changes(self):
+    def save_changes(self, save_to_db=True):
         """
         Save changes in the postgres table
         """
@@ -504,31 +508,33 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
             ).exec_()
             return False
 
-        try:
-            with self.transaction():
-                cur = self.connection.cursor()
-                cur.execute("delete from {}.{} where profile = '{}'".format(
-                    schema, self.table, profile))
-                for item, data in self.target.iteritems():
-                    if not data:
-                        continue
-                    cur.execute("""
-                    insert into {}.{} (name,profile,model_index,datasource_uri)
-                    values (%s, %s, %s, %s)
-                    """.format(schema, self.table), (
-                        item[-1][1],
-                        profile,
-                        json.dumps(item),
-                        data.data())
-                    )
-        except psycopg2.ProgrammingError as exc:
-            QMessageBox(
-                QMessageBox.Warning,
-                "Menu Builder",
-                exc.message.decode(self.pgencoding),
-                QMessageBox.Ok,
-                self
-            ).exec_()
+        if save_to_db:
+            try:
+                with self.transaction():
+                    cur = self.connection.cursor()
+                    cur.execute("delete from {}.{} where profile = '{}'".format(
+                        schema, self.table, profile))
+                    for item, data in self.target.iteritems():
+                        if not data:
+                            continue
+                        cur.execute("""
+                        insert into {}.{} (name,profile,model_index,datasource_uri)
+                        values (%s, %s, %s, %s)
+                        """.format(schema, self.table), (
+                            item[-1][1],
+                            profile,
+                            json.dumps(item),
+                            data.data())
+                        )
+            except Exception as exc:
+                QMessageBox(
+                    QMessageBox.Warning,
+                    "Menu Builder",
+                    exc.message.decode(self.pgencoding),
+                    QMessageBox.Ok,
+                    self
+                ).exec_()
+                return False
 
         self.save_session(
             self.combo_database.currentText(),
@@ -682,6 +688,10 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
         if self.save_changes():
             QDialog.reject(self)
             self.close_connection()
+
+    def apply(self):
+        if self.save_changes(save_to_db=False):
+            QDialog.reject(self)
 
     def reject(self):
         self.close_connection()
