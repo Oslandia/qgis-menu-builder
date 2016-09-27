@@ -57,6 +57,7 @@ ICON_MAPPER = {
 
 
 class MenuBuilderDialog(QDialog, FORM_CLASS):
+
     def __init__(self, uiparent):
         super(MenuBuilderDialog, self).__init__()
 
@@ -100,7 +101,7 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         self.target.setAnimated(True)
 
         # add a dock widget
-        self.dock_widget = QDockWidget("Menus", self.uiparent.iface.mainWindow())
+        self.dock_widget = QDockWidget("Menus")
         self.dock_widget.resize(400, 300)
         self.dock_widget.setFloating(True)
         self.dock_widget.setObjectName(self.tr("Menu Tree"))
@@ -312,9 +313,11 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
         return True
 
     def pg_error_types(self):
-        return psycopg2.InterfaceError,\
-               psycopg2.OperationalError,\
-               psycopg2.ProgrammingError
+        return (
+            psycopg2.InterfaceError,
+            psycopg2.OperationalError,
+            psycopg2.ProgrammingError
+        )
 
     @check_connected
     def update_schema_list(self):
@@ -715,10 +718,13 @@ class MenuBuilderDialog(QDialog, FORM_CLASS):
 
         self.set_connection(0, dbname=database)
         self.show_dock(bool(dock), profile=profile, schema=schema)
+        if bool(dock):
+            self.uiparent.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dock_widget)
         self.show_menus(bool(menubar), profile=profile, schema=schema)
 
 
 class CustomQtTreeView(QTreeView):
+
     def __init__(self, *args, **kwargs):
         super(CustomQtTreeView, self).__init__(*args, **kwargs)
 
@@ -779,6 +785,7 @@ class CustomQtTreeView(QTreeView):
 
 
 class DockQtTreeView(CustomQtTreeView):
+
     def __init__(self, *args, **kwargs):
         super(DockQtTreeView, self).__init__(*args, **kwargs)
 
@@ -788,6 +795,7 @@ class DockQtTreeView(CustomQtTreeView):
 
 
 class MenuTreeModel(QStandardItemModel):
+
     def __init__(self, *args, **kwargs):
         super(MenuTreeModel, self).__init__(*args, **kwargs)
 
