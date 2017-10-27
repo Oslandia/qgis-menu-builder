@@ -14,17 +14,17 @@ email                : infos@oslandia.com
  *                                                                         *
  ***************************************************************************/
 """
-from __future__ import unicode_literals
 from os import path
 
-from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
-from PyQt4.QtGui import QAction, QIcon, QMessageBox
+from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QAction, QMessageBox
 
 # Initialize Qt resources from file resources.py
-import resources_rc
+from . import resources
 
 # Import the code for the dialog
-from menu_builder_dialog import MenuBuilderDialog
+from .menu_builder_dialog import MenuBuilderDialog
 import os.path
 
 

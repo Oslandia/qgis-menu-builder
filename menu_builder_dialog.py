@@ -14,7 +14,6 @@ email                : infos@oslandia.com
  *                                                                         *
  ***************************************************************************/
 """
-from __future__ import unicode_literals
 import os
 import re
 import json
@@ -24,19 +23,23 @@ from functools import wraps, partial
 
 import psycopg2
 
-from PyQt4.QtCore import Qt, QSettings, QRect
-from PyQt4.QtGui import (
-    QIcon, QMessageBox, QDialog, QStandardItem, QMenu, QAction,
-    QStandardItemModel, QTreeView, QAbstractItemView,
-    QDockWidget, QWidget, QVBoxLayout, QSizePolicy,
-    QSortFilterProxyModel, QLineEdit, QDialogButtonBox
+from PyQt5.QtCore import Qt, QSettings, QRect, QSortFilterProxyModel
+from PyQt5.QtWidgets import (
+    QAction, QMessageBox, QDialog, QMenu, QTreeView,
+    QAbstractItemView, QDockWidget, QWidget, QVBoxLayout,
+    QSizePolicy, QLineEdit, QDialogButtonBox
+)
+
+from PyQt5.QtGui import (
+    QIcon, QStandardItem,
+    QStandardItemModel
 )
 from qgis.core import (
-    QgsMapLayerRegistry, QgsBrowserModel, QgsDataSourceURI,
+    QgsProject, QgsBrowserModel, QgsDataSourceUri,
     QgsCredentials, QgsVectorLayer, QgsMimeDataUtils, QgsRasterLayer
 )
 
-from menu_builder_dialog_base import Ui_Dialog
+from .menu_builder_dialog_base import Ui_Dialog
 
 QGIS_MIMETYPE = 'application/x-vnd.qgis.qgis.uri'
 
@@ -88,6 +91,7 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
         self.verticalLayout_2.addWidget(self.target)
 
         self.browser = QgsBrowserModel()
+        self.browser.initialize()
         self.source.setModel(self.browser)
         self.source.setHeaderHidden(True)
         self.source.setDragEnabled(True)
@@ -223,14 +227,14 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
             QMessageBox.critical(self, "Error", "There is no defined database connection")
             return
 
-        uri = QgsDataSourceURI()
+        uri = QgsDataSourceUri()
 
         settingsList = ["service", "host", "port", "database", "username", "password"]
         service, host, port, database, username, password = map(
             lambda x: settings.value(x, "", type=str), settingsList)
 
         useEstimatedMetadata = settings.value("estimatedMetadata", False, type=bool)
-        sslmode = settings.value("sslmode", QgsDataSourceURI.SSLprefer, type=int)
+        sslmode = settings.value("sslmode", QgsDataSourceUri.SslPrefer, type=int)
 
         settings.endGroup()
 
@@ -293,11 +297,11 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
         try:
             self.connection = psycopg2.connect(uri.connectionInfo())
         except self.pg_error_types() as e:
-            err = str(e)
+            err = e
             conninfo = uri.connectionInfo()
 
             ok, username, password = QgsCredentials.instance().get(
-                conninfo, username, password, err)
+                conninfo, username, password, str(err))
             if not ok:
                 raise Exception(e)
 
@@ -664,7 +668,7 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
             )
         if not layer:
             return
-        QgsMapLayerRegistry.instance().addMapLayer(layer)
+        QgsProject.instance.instance().addMapLayer(layer)
 
     def load_vector(self):
         action = self.sender()
@@ -673,7 +677,7 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
             action.text(),  # layer name
             action.whatsThis()  # provider name
         )
-        QgsMapLayerRegistry.instance().addMapLayer(layer)
+        QgsProject.instance.instance().addMapLayer(layer)
 
     def load_raster(self):
         action = self.sender()
@@ -682,7 +686,7 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
             action.text(),  # layer name
             action.whatsThis()  # provider name
         )
-        QgsMapLayerRegistry.instance().addMapLayer(layer)
+        QgsProject.instance.instance().addMapLayer(layer)
 
     def accept(self):
         if self.save_changes():
