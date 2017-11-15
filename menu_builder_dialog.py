@@ -668,7 +668,7 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
             )
         if not layer:
             return
-        QgsProject.instance.instance().addMapLayer(layer)
+        QgsProject.instance().addMapLayer(layer)
 
     def load_vector(self):
         action = self.sender()
@@ -677,7 +677,7 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
             action.text(),  # layer name
             action.whatsThis()  # provider name
         )
-        QgsProject.instance.instance().addMapLayer(layer)
+        QgsProject.instance().addMapLayer(layer)
 
     def load_raster(self):
         action = self.sender()
@@ -686,7 +686,7 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
             action.text(),  # layer name
             action.whatsThis()  # provider name
         )
-        QgsProject.instance.instance().addMapLayer(layer)
+        QgsProject.instance().addMapLayer(layer)
 
     def accept(self):
         if self.save_changes():
@@ -823,6 +823,7 @@ class MenuTreeModel(QStandardItemModel):
         dropParent = self.itemFromIndex(parentIndex)
         if not dropParent:
             return False
+
         # each uri will become a new item
         for uri in uri_list:
             item = QStandardItem(uri.name)
