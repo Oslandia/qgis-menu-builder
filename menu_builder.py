@@ -120,6 +120,7 @@ class MenuBuilder:
         for menu in self.menus:
             menu.deleteLater()
         self.iface.removeDockWidget(self.dlg.dock_widget)
+        del self.dlg.dock_widget
 
     def run_configure(self):
         # show the configure dialog
