@@ -59,7 +59,7 @@ ICON_MAPPER = {
 class MenuBuilderDialog(QDialog, Ui_Dialog):
 
     def __init__(self, uiparent):
-        super(MenuBuilderDialog, self).__init__()
+        super().__init__()
 
         self.setupUi(self)
 
