@@ -614,7 +614,7 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
                 menu = menudict[parent]
 
             # last item = layer
-            layer = QAction(name, self.uiparent.iface.mainWindow())
+            layer = QAction(name, self)
 
             if uri_struct.providerKey in ICON_MAPPER:
                 layer.setIcon(QIcon(ICON_MAPPER[uri_struct.providerKey]))
@@ -674,6 +674,7 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
 
     def load_vector(self):
         action = self.sender()
+
         layer = QgsVectorLayer(
             action.data(),  # uri
             action.text(),  # layer name
