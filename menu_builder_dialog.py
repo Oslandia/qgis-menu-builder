@@ -790,18 +790,12 @@ class CustomQtTreeView(QTreeView):
 
 class DockQtTreeView(CustomQtTreeView):
 
-    def __init__(self, *args, **kwargs):
-        super(DockQtTreeView, self).__init__(*args, **kwargs)
-
     def keyPressEvent(self, event):
         """override keyevent to avoid deletion of items in the dock"""
         pass
 
 
 class MenuTreeModel(QStandardItemModel):
-
-    def __init__(self, *args, **kwargs):
-        super(MenuTreeModel, self).__init__(*args, **kwargs)
 
     def dropMimeData(self, mimedata, action, row, column, parentIndex):
         """
