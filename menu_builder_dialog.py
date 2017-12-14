@@ -739,12 +739,6 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
 
 class CustomQtTreeView(QTreeView):
 
-    def __init__(self, *args, **kwargs):
-        super(CustomQtTreeView, self).__init__(*args, **kwargs)
-
-    def dragMoveEvent(self, event):
-        event.acceptProposedAction()
-
     def dragEnterEvent(self, event):
         if not event.mimeData():
             # don't drag menu entry
