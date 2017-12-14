@@ -756,6 +756,10 @@ class CustomQtTreeView(QTreeView):
             for parent, idx_list in parents.items():
                 for diff, index in enumerate(idx_list):
                     model.removeRow(index.row() - diff, parent)
+        elif event.key() == Qt.Key_Return:
+            pass
+        else:
+            super().keyPressEvent(event)
 
     def iteritems(self, level=0):
         """
