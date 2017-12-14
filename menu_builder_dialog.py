@@ -749,17 +749,13 @@ class CustomQtTreeView(QTreeView):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Delete:
-            self.dropItem()
-
-    def dropItem(self):
-        model = self.selectionModel().model()
-        parents = defaultdict(list)
-        for idx in self.selectedIndexes():
-            parents[idx.parent()].append(idx)
-
-        for parent, idx_list in parents.items():
-            for diff, index in enumerate(idx_list):
-                model.removeRow(index.row() - diff, parent)
+            model = self.selectionModel().model()
+            parents = defaultdict(list)
+            for idx in self.selectedIndexes():
+                parents[idx.parent()].append(idx)
+            for parent, idx_list in parents.items():
+                for diff, index in enumerate(idx_list):
+                    model.removeRow(index.row() - diff, parent)
 
     def iteritems(self, level=0):
         """
