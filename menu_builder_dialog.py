@@ -89,6 +89,9 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
         self.target.setSizePolicy(sizePolicy)
         self.target.setAutoFillBackground(True)
         self.verticalLayout_2.addWidget(self.target)
+        self.menumodel = MenuTreeModel(self)
+        self.target.setModel(self.menumodel)
+        self.target.setAnimated(True)
 
         self.browser = QgsBrowserModel()
         self.browser.initialize()
@@ -97,9 +100,6 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
         self.source.setDragEnabled(True)
         self.source.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
-        self.menumodel = MenuTreeModel(self)
-        self.target.setModel(self.menumodel)
-        self.target.setAnimated(True)
 
         # add a dock widget
         self.dock_widget = QDockWidget("Menus")
