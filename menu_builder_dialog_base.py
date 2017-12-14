@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'menu_builder_dialog_base.ui'
 #
-# Created by: PyQt5 UI code generator 5.9
+# Created by: PyQt5 UI code generator 5.9.2
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -14,7 +14,7 @@ class Ui_Dialog(object):
         Dialog.setWindowModality(QtCore.Qt.NonModal)
         Dialog.resize(742, 499)
         Dialog.setSizeGripEnabled(True)
-        Dialog.setModal(True)
+        Dialog.setModal(False)
         self.verticalLayout = QtWidgets.QVBoxLayout(Dialog)
         self.verticalLayout.setObjectName("verticalLayout")
         self.horizontalLayout = QtWidgets.QHBoxLayout()
