@@ -92,6 +92,7 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
         self.menumodel = MenuTreeModel(self)
         self.target.setModel(self.menumodel)
         self.target.setAnimated(True)
+        self.target.setDefaultDropAction(Qt.MoveAction)
 
         self.browser = QgsBrowserModel()
         self.browser.initialize()
@@ -99,7 +100,6 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
         self.source.setHeaderHidden(True)
         self.source.setDragEnabled(True)
         self.source.setSelectionMode(QAbstractItemView.ExtendedSelection)
-
 
         # add a dock widget
         self.dock_widget = QDockWidget("Menus")
@@ -807,11 +807,11 @@ class MenuTreeModel(QStandardItemModel):
         if not uri_list:
             return False
         # find parent item
-        dropParent = self.itemFromIndex(parentIndex)
-        if not dropParent:
+        parent_item = self.itemFromIndex(parentIndex)
+        if not parent_item:
             return False
 
-        # each uri will become a new item
+        items = []
         for uri in uri_list:
             item = QStandardItem(uri.name)
             item.setData(uri)
@@ -819,8 +819,15 @@ class MenuTreeModel(QStandardItemModel):
             item.setDropEnabled(False)
             if uri.providerKey in ICON_MAPPER:
                 item.setIcon(QIcon(ICON_MAPPER[uri.providerKey]))
-            dropParent.appendRow(item)
-        dropParent.emitDataChanged()
+            items.append(item)
+
+        if row == -1:
+            # dropped on a Menu
+            # add as a child at the end
+            parent_item.appendRows(items)
+        else:
+            # add items at the separator shown
+            parent_item.insertRows(row, items)
 
         return True
 
