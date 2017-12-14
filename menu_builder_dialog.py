@@ -840,12 +840,12 @@ class MenuTreeModel(QStandardItemModel):
         Used to serialize data
         """
         if not indexes:
-            return
+            return 0
         items = [self.itemFromIndex(idx) for idx in indexes]
         if not items:
-            return
+            return 0
         if not all(it.data() for it in items):
-            return
+            return 0
         # reencode items
         mimedata = QgsMimeDataUtils.encodeUriList([item.data() for item in items])
         return mimedata
