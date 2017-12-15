@@ -246,9 +246,21 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
         uri.setUseEstimatedMetadata(useEstimatedMetadata)
 
         # connect to db
-        self.connect_to_uri(uri)
+        try:
+            self.connect_to_uri(uri)
+        except self.pg_error_types():
+            QMessageBox.warning(
+                self,
+                "Plugin MenuBuilder: Message",
+                self.tr("The database containing Menu's configuration is unavailable"),
+                QMessageBox.Ok,
+            )
+            # connection not available
+            return False
+
         # update schema list
         self.update_schema_list()
+        return True
 
     @contextmanager
     def transaction(self):
@@ -272,7 +284,7 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
                     inst.tr("Not connected to any database, please select one"),
                     QMessageBox.Ok,
                     inst
-                ).exec_()
+                )
                 return
             if inst.connection.closed:
                 QMessageBox(
@@ -281,7 +293,7 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
                     inst.tr("Not connected to any database, please select one"),
                     QMessageBox.Ok,
                     inst
-                ).exec_()
+                )
                 return
             return func(inst, *args, **kwargs)
         return wrapped
@@ -303,7 +315,7 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
             ok, username, password = QgsCredentials.instance().get(
                 conninfo, username, password, str(err))
             if not ok:
-                raise Exception(e)
+                raise e
 
             if username:
                 uri.setUsername(username)
@@ -730,7 +742,11 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
         if not any([database, profile]):
             return
 
-        self.set_connection(0, dbname=database)
+        connected = self.set_connection(0, dbname=database)
+        if not connected:
+            # don't try to continue
+            return
+
         self.show_dock(bool(dock), profile=profile, schema=schema)
         if bool(dock):
             self.uiparent.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dock_widget)

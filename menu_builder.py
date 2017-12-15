@@ -102,16 +102,7 @@ class MenuBuilder:
         self.actions.append(configure)
 
         # restore previous session if exists
-        try:
-            self.dlg.restore_session()
-        except Exception as exc:
-            QMessageBox(
-                QMessageBox.Warning,
-                "Restoring MenuBuilder last session",
-                exc.message.decode(self.dlg.pgencoding),
-                QMessageBox.Ok,
-                self.dlg
-            ).exec_()
+        self.dlg.restore_session()
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""

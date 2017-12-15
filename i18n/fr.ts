@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.0" language="fr_FR" sourcelanguage="en">
+<TS version="2.1" language="fr_FR" sourcelanguage="en">
 <context>
     <name>Dialog</name>
     <message>
@@ -105,7 +105,7 @@
         <translation type="obsolete">Veuillez sélectionner une base de donnée avant de sauvergarder !</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="385"/>
+        <location filename="../menu_builder_dialog.py" line="416"/>
         <source>Delete &apos;{}&apos; profile ?</source>
         <translation>Supprimer le profile &apos;{}&apos; ?</translation>
     </message>
@@ -115,29 +115,34 @@
         <translation type="obsolete">Non connecté à une base, veuillez en sélectionner une</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="480"/>
+        <location filename="../menu_builder_dialog.py" line="519"/>
         <source>Profile cannot be empty</source>
         <translation>Le nom de profil ne peut être vide</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="106"/>
+        <location filename="../menu_builder_dialog.py" line="108"/>
         <source>Menu Tree</source>
         <translation>Arbre des menus</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="114"/>
+        <location filename="../menu_builder_dialog.py" line="116"/>
         <source>Filter by table description (postgis only)</source>
         <translation>Filtrer par la description de la table (postgis uniquement)</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="68"/>
+        <location filename="../menu_builder_dialog.py" line="69"/>
         <source>Profile name</source>
         <translation>Nom du profile</translation>
     </message>
     <message>
-        <location filename="../menu_builder_dialog.py" line="343"/>
+        <location filename="../menu_builder_dialog.py" line="374"/>
         <source>Table &apos;{}.{}&apos; not found in this database, would you like to create it now ?</source>
         <translation>Table &apos;{}.{}&apos; non trouvée dans cette base, voulez-vous la créer maintenant ?</translation>
+    </message>
+    <message>
+        <location filename="../menu_builder_dialog.py" line="252"/>
+        <source>The database containing Menu&apos;s configuration is unavailable</source>
+        <translation>La base de donnée contenant les configurations des menus est inaccessible</translation>
     </message>
 </context>
 <context>
@@ -166,7 +171,7 @@
 <context>
     <name>inst</name>
     <message>
-        <location filename="../menu_builder_dialog.py" line="270"/>
+        <location filename="../menu_builder_dialog.py" line="290"/>
         <source>Not connected to any database, please select one</source>
         <translation>Non connecté à une base, veuillez en sélectionner une</translation>
     </message>
