@@ -643,7 +643,7 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
             menu.addAction(layer)
 
     def get_table_comment(self, uri):
-        schema, table = re.match(r'.*table=(.*)\(.*', uri) \
+        schema, table = re.match(r'.*table=(".*"\.".*")', uri) \
             .group(1) \
             .strip() \
             .replace('"', '') \
