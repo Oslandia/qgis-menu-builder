@@ -234,7 +234,7 @@ class MenuBuilderDialog(QDialog, Ui_Dialog):
             lambda x: settings.value(x, "", type=str), settingsList)
 
         useEstimatedMetadata = settings.value("estimatedMetadata", False, type=bool)
-        sslmode = settings.value("sslmode", QgsDataSourceUri.SslPrefer, type=int)
+        sslmode = uri.decodeSslMode(settings.value("sslmode"))
 
         settings.endGroup()
 
